@@ -1,0 +1,23 @@
+{
+  "name": "youtube-video-assistant",
+  "version": "1.0.0",
+  "description": "AI-powered YouTube video understanding browser extension",
+  "scripts": {
+    "generate-icons": "node generate-icons.js",
+    "build": "node build.js",
+    "dev": "npm run build && echo 'Extension built with environment variables'"
+  },
+  "devDependencies": {
+    "canvas": "^2.11.2",
+    "dotenv": "^16.0.0"
+  },
+  "keywords": [
+    "youtube",
+    "browser-extension",
+    "ai",
+    "video-analysis",
+    "twelve-labs"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
