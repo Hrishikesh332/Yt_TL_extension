@@ -103,7 +103,7 @@ class BackgroundService {
 
   async getIndexId() {
     const result = await chrome.storage.sync.get(['indexId']);
-    return result.indexId || '6298d673f1090f1100476d4c'; // Default index ID
+    return result.indexId || '';
   }
 
   async callTwelveLabsAPI(endpoint, data) {
@@ -157,6 +157,9 @@ class BackgroundService {
 
       // Get stored index ID
       const indexId = await this.getIndexId();
+      if (!indexId) {
+        throw new Error('Index ID not configured');
+      }
       
       // Send status update: Uploading to Twelve Labs
       this.sendStatusUpdate(tabId, 'Uploading to Twelve Labs', 'Sending video to AI processing engine');
