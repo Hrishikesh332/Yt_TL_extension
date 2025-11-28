@@ -22,6 +22,167 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
+/* YouTube Player Control Button */
+.yt-assistant-player-button {
+  width: 48px !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  opacity: 0.9;
+  transition: opacity 0.2s ease !important;
+  cursor: pointer !important;
+  border: none !important;
+  background: transparent !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  vertical-align: top !important;
+  top: 0 !important;
+  pointer-events: auto !important;
+  z-index: 10 !important;
+}
+
+.yt-assistant-player-button:hover {
+  opacity: 1 !important;
+}
+
+.yt-assistant-player-button img {
+  display: block !important;
+  pointer-events: none !important;
+  /* No filter needed - logo_control.png already has white/transparent design */
+}
+
+.yt-assistant-player-button div {
+  pointer-events: none !important;
+}
+
+/* YouTube Menu Button */
+.yt-assistant-menu-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  margin-left: 8px !important;
+}
+
+.yt-assistant-ask-button {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 0 16px !important;
+  height: 36px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 18px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  color: #fff !important;
+  font-family: Roboto, Arial, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  line-height: 36px !important;
+}
+
+.yt-assistant-ask-button:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.yt-assistant-ask-button img {
+  width: 20px !important;
+  height: 20px !important;
+  display: block !important;
+}
+
+/* Streaming Response Styles */
+.message.streaming .message-content {
+  position: relative;
+  display: inline-block;
+}
+
+.streaming-text {
+  display: inline;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: currentColor;
+  margin-left: 2px;
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+/* Timestamp Button Styles */
+.timestamp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  margin: 0 2px;
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border: 1px solid #81c784;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2e7d32;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(46, 125, 50, 0.1);
+  vertical-align: middle;
+}
+
+.timestamp-btn:hover {
+  background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+  border-color: #66bb6a;
+  box-shadow: 0 2px 6px rgba(46, 125, 50, 0.2);
+  transform: translateY(-1px);
+}
+
+.timestamp-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(46, 125, 50, 0.2);
+}
+
+.timestamp-btn svg {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  color: #2e7d32;
+}
+
+.timestamp-btn span {
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Dark theme support */
+.dark-theme .timestamp-btn {
+  background: linear-gradient(135deg, rgba(129, 199, 132, 0.15) 0%, rgba(129, 199, 132, 0.25) 100%);
+  border-color: rgba(129, 199, 132, 0.4);
+  color: #81c784;
+}
+
+.dark-theme .timestamp-btn:hover {
+  background: linear-gradient(135deg, rgba(129, 199, 132, 0.25) 0%, rgba(129, 199, 132, 0.35) 100%);
+  border-color: rgba(129, 199, 132, 0.6);
+}
+
+.dark-theme .timestamp-btn svg {
+  color: #81c784;
+}
+
 /* Main Sidebar */
 .sidebar {
   position: fixed;
@@ -571,6 +732,9 @@
 
 .input-container {
   position: relative;
+  width: 100%;
+  padding: 0;
+  margin: 0;
 }
 
 /* Close button at top right */
@@ -641,11 +805,13 @@
   border-radius: 16px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .textarea-wrapper:focus-within {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: #60E21B;
+  box-shadow: 0 0 0 3px rgba(96, 226, 27, 0.2);
 }
 
 #chat-input {
@@ -661,7 +827,9 @@
   min-height: 24px;
   max-height: 120px;
   line-height: 1.5;
-  font-family: inherit;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 #chat-input::placeholder {
@@ -722,8 +890,8 @@
 }
 
 .sidebar.dark-theme .textarea-wrapper:focus-within {
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+  border-color: #60E21B;
+  box-shadow: 0 0 0 3px rgba(96, 226, 27, 0.15);
 }
 
 .sidebar.dark-theme #chat-input {

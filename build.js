@@ -9,27 +9,21 @@ const backgroundPath = path.join(__dirname, 'background.js');
 let backgroundContent = fs.readFileSync(backgroundPath, 'utf8');
 
 // Replace placeholder values with environment variables
-const apiKey = process.env.API_KEY || '';
-const indexId = process.env.INDEX_ID || '';
+const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
 
-if (!apiKey || !indexId) {
-  console.error('❌ Error: API_KEY and INDEX_ID must be set in .env file');
+if (!backendUrl) {
+  console.error('❌ Error: BACKEND_URL must be set in .env file');
   process.exit(1);
 }
 
-// Replace the placeholder values
+// Replace the placeholder value
 backgroundContent = backgroundContent.replace(
-  /apiKey: 'REPLACE_WITH_API_KEY'/,
-  `apiKey: '${apiKey}'`
-);
-
-backgroundContent = backgroundContent.replace(
-  /indexId: 'REPLACE_WITH_INDEX_ID'/,
-  `indexId: '${indexId}'`
+  /backendUrl: 'REPLACE_WITH_BACKEND_URL'/,
+  `backendUrl: '${backendUrl}'`
 );
 
 // Write the updated file
 fs.writeFileSync(backgroundPath, backgroundContent);
 
 console.log('✅ Extension built with environment variables');
-console.log('🔒 API credentials injected securely');
+console.log(`🔗 Backend URL: ${backendUrl}`);

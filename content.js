@@ -6,12 +6,38 @@ class YouTubeVideoAssistant {
     this.videoIndexed = false;
     this.setupVideoDetection();
     this.setupMessageHandlers();
+    this.setupSidebarCloseListener();
+  }
+
+  setupSidebarCloseListener() {
+    // Listen for sidebar close events
+    window.addEventListener('yt-assistant-sidebar-closed', () => {
+      console.log('Sidebar close event received');
+      this.sidebar = null;
+      this.isSidebarOpen = false;
+      
+      // Update button states
+      const playerBtn = document.getElementById('yt-assistant-player-btn');
+      if (playerBtn) {
+        playerBtn.style.opacity = '0.7';
+      }
+    });
   }
 
   setupVideoDetection() {
     // Detect when user navigates to a video page
     const observer = new MutationObserver(() => {
       const videoId = this.getCurrentVideoId();
+      
+      // Check if navigated away from video page
+      if (!videoId && this.currentVideoId && this.sidebar) {
+        console.log('Navigated away from video page, closing sidebar');
+        this.closeSidebarCompletely();
+        this.currentVideoId = null;
+        return;
+      }
+      
+      // Check if navigated to a new video
       if (videoId && videoId !== this.currentVideoId) {
         this.currentVideoId = videoId;
         this.onVideoChange();
@@ -30,6 +56,33 @@ class YouTubeVideoAssistant {
     }
   }
 
+  closeSidebarCompletely() {
+    if (this.sidebar) {
+      const sidebarElement = document.getElementById('youtube-video-assistant-sidebar');
+      if (sidebarElement) {
+        sidebarElement.remove();
+      }
+      this.sidebar = null;
+      this.isSidebarOpen = false;
+      
+      // Remove all buttons
+      const playerBtn = document.getElementById('yt-assistant-player-btn');
+      if (playerBtn) {
+        playerBtn.remove();
+      }
+      
+      const menuBtn = document.getElementById('yt-assistant-menu-btn');
+      if (menuBtn) {
+        menuBtn.remove();
+      }
+      
+      const toggleBtn = document.getElementById('video-assistant-toggle');
+      if (toggleBtn) {
+        toggleBtn.remove();
+      }
+    }
+  }
+
   getCurrentVideoId() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('v');
@@ -45,6 +98,12 @@ class YouTubeVideoAssistant {
     } else {
       this.createSidebar();
     }
+    
+    // Add player control button
+    this.addPlayerControlButton();
+    
+    // Add menu button
+    this.addMenuButton();
   }
 
   createSidebar() {
@@ -148,6 +207,10 @@ class YouTubeVideoAssistant {
 
     // Add to page
     document.body.appendChild(sidebarContainer);
+    
+    // Force a reflow to ensure styles are applied
+    sidebarContainer.offsetHeight;
+    
     this.sidebar = new SidebarManager(sidebarContainer, this.currentVideoId);
     this.isSidebarOpen = true;
 
@@ -178,11 +241,177 @@ class YouTubeVideoAssistant {
     }
   }
 
+  addPlayerControlButton() {
+    // Remove existing button if any
+    const existingBtn = document.getElementById('yt-assistant-player-btn');
+    if (existingBtn) {
+      existingBtn.remove();
+    }
+
+    // Wait for player controls to be ready
+    const checkControls = setInterval(() => {
+      const rightControls = document.querySelector('.ytp-right-controls');
+      
+      if (rightControls) {
+        clearInterval(checkControls);
+        
+        // Create button
+        const button = document.createElement('button');
+        button.id = 'yt-assistant-player-btn';
+        button.className = 'ytp-button yt-assistant-player-button';
+        button.title = 'Toggle AI Video Assistant';
+        button.setAttribute('aria-label', 'Toggle AI Video Assistant');
+        
+        // Add extension icon
+        const iconUrl = chrome.runtime.getURL('icons/logo_control.png');
+        button.innerHTML = `
+          <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none;">
+            <img src="${iconUrl}" alt="AI Assistant" style="width: 28px; height: 28px; display: block; object-fit: contain; pointer-events: none;">
+          </div>
+        `;
+        
+        // Add click handler - using both click and mousedown for reliability
+        const handleClick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          console.log('Player button clicked!');
+          this.toggleSidebar();
+        };
+        
+        button.addEventListener('click', handleClick, true);
+        button.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }, true);
+        
+        // Set initial opacity based on sidebar state
+        button.style.opacity = this.isSidebarOpen ? '1' : '0.7';
+        
+        // Insert as first child of right controls
+        rightControls.insertBefore(button, rightControls.firstChild);
+      }
+    }, 100);
+    
+    // Clear interval after 10 seconds if controls not found
+    setTimeout(() => clearInterval(checkControls), 10000);
+  }
+
+  addMenuButton() {
+    // Remove existing button if any
+    const existingBtn = document.getElementById('yt-assistant-menu-btn');
+    if (existingBtn) {
+      existingBtn.remove();
+    }
+
+    // Wait for menu renderer to be ready
+    const checkMenu = setInterval(() => {
+      // Look for the segmented like/dislike button or top level buttons
+      const topLevelButtons = document.querySelector('ytd-menu-renderer #top-level-buttons-computed');
+      
+      if (topLevelButtons) {
+        clearInterval(checkMenu);
+        console.log('Found top level buttons, adding Ask button');
+        
+        // Create button container
+        const buttonContainer = document.createElement('div');
+        buttonContainer.id = 'yt-assistant-menu-btn';
+        buttonContainer.className = 'yt-assistant-menu-button';
+        buttonContainer.style.cssText = 'display: inline-flex; align-items: center; margin-left: 8px;';
+        
+        // Add extension icon and text
+        const iconUrl = chrome.runtime.getURL('icons/logo_control.png');
+        buttonContainer.innerHTML = `
+          <button class="yt-assistant-ask-button" style="
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 16px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 18px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #fff;
+            font-family: Roboto, Arial, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 36px;
+          ">
+            <img src="${iconUrl}" alt="AI" style="width: 20px; height: 20px; display: block;">
+            <span>Ask</span>
+          </button>
+        `;
+        
+        // Add click handler
+        const button = buttonContainer.querySelector('button');
+        button.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Menu Ask button clicked!');
+          this.toggleSidebar();
+        });
+        
+        // Add hover effect
+        button.addEventListener('mouseenter', () => {
+          button.style.background = 'rgba(255, 255, 255, 0.2)';
+        });
+        button.addEventListener('mouseleave', () => {
+          button.style.background = 'rgba(255, 255, 255, 0.1)';
+        });
+        
+        // Find the Share button and insert after it
+        const shareButton = topLevelButtons.querySelector('ytd-button-renderer:has(yt-button-shape button[aria-label*="Share" i])');
+        if (shareButton && shareButton.nextSibling) {
+          // Insert after Share button
+          topLevelButtons.insertBefore(buttonContainer, shareButton.nextSibling);
+          console.log('Ask button added after Share button');
+        } else {
+          // Fallback: append to the end
+          topLevelButtons.appendChild(buttonContainer);
+          console.log('Ask button added at the end');
+        }
+      }
+    }, 500);
+    
+    // Clear interval after 10 seconds if menu not found
+    setTimeout(() => {
+      clearInterval(checkMenu);
+      console.log('Stopped looking for menu buttons');
+    }, 10000);
+  }
+
   toggleSidebar() {
     const sidebar = document.getElementById('youtube-video-assistant-sidebar');
+    
     if (sidebar) {
+      // Sidebar exists, toggle visibility
       this.isSidebarOpen = !this.isSidebarOpen;
-      sidebar.classList.toggle('collapsed', !this.isSidebarOpen);
+      if (this.isSidebarOpen) {
+        sidebar.classList.remove('collapsed');
+      } else {
+        sidebar.classList.add('collapsed');
+      }
+      
+      // Update player button opacity
+      const playerBtn = document.getElementById('yt-assistant-player-btn');
+      if (playerBtn) {
+        playerBtn.style.opacity = this.isSidebarOpen ? '1' : '0.7';
+      }
+      
+      console.log('Sidebar toggled, open:', this.isSidebarOpen);
+    } else {
+      // Sidebar doesn't exist, recreate it
+      console.log('Sidebar was closed, recreating...');
+      this.createSidebar();
+      this.isSidebarOpen = true;
+      
+      // Update player button opacity
+      const playerBtn = document.getElementById('yt-assistant-player-btn');
+      if (playerBtn) {
+        playerBtn.style.opacity = '1';
+      }
     }
   }
 
@@ -190,12 +419,20 @@ class YouTubeVideoAssistant {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.action === 'toggleSidebar') {
         this.toggleSidebar();
+      } else if (request.action === 'streamingChunk') {
+        this.handleStreamingChunk(request.chunk, request.fullText);
       } else if (request.action === 'streamingUpdate') {
         this.handleStreamingUpdate(request.type, request.data);
       } else if (request.action === 'processingStatusUpdate') {
         this.handleProcessingStatusUpdate(request.step, request.description);
       }
     });
+  }
+
+  handleStreamingChunk(chunk, fullText) {
+    if (this.sidebar) {
+      this.sidebar.updateStreamingResponse(chunk, fullText);
+    }
   }
 
   handleStreamingUpdate(type, data) {
@@ -222,9 +459,13 @@ class SidebarManager {
     this.chatInput = container.querySelector('#chat-input');
     this.sendBtn = container.querySelector('#send-btn');
     this.theme = 'light';
+    this.videoIndexed = false;
     
     this.setupEventListeners();
     this.loadSettings();
+    
+    // Automatically start indexing the video
+    this.autoIndexVideo();
   }
 
   setupEventListeners() {
@@ -254,25 +495,15 @@ class SidebarManager {
     });
 
     // Expandable section
-    const expandBtn = this.container.querySelector('#expand-btn');
-    const expandableContent = this.container.querySelector('#expandable-content');
-    const expandIcon = this.container.querySelector('.expand-icon');
-    const expandCount = this.container.querySelector('.expand-count');
+    this.expandBtn = this.container.querySelector('#expand-btn');
+    this.expandableContent = this.container.querySelector('#expandable-content');
+    this.expandIcon = this.container.querySelector('.expand-icon');
+    this.expandCount = this.container.querySelector('.expand-count');
     
-    let isExpanded = false;
+    this.isExpanded = false;
     
-    expandBtn.addEventListener('click', () => {
-      isExpanded = !isExpanded;
-      
-      if (isExpanded) {
-        expandableContent.style.maxHeight = expandableContent.scrollHeight + 'px';
-        expandIcon.style.transform = 'rotate(180deg)';
-        expandCount.style.display = 'none';
-      } else {
-        expandableContent.style.maxHeight = '0px';
-        expandIcon.style.transform = 'rotate(0deg)';
-        expandCount.style.display = 'inline';
-      }
+    this.expandBtn.addEventListener('click', () => {
+      this.toggleExpandableSection();
     });
 
     // Prompt buttons
@@ -284,6 +515,29 @@ class SidebarManager {
         this.sendMessage();
       });
     });
+  }
+
+  toggleExpandableSection() {
+    this.isExpanded = !this.isExpanded;
+    
+    if (this.isExpanded) {
+      this.expandableContent.style.maxHeight = this.expandableContent.scrollHeight + 'px';
+      this.expandIcon.style.transform = 'rotate(180deg)';
+      this.expandCount.style.display = 'none';
+    } else {
+      this.expandableContent.style.maxHeight = '0px';
+      this.expandIcon.style.transform = 'rotate(0deg)';
+      this.expandCount.style.display = 'inline';
+    }
+  }
+
+  collapseExpandableSection() {
+    if (this.isExpanded) {
+      this.isExpanded = false;
+      this.expandableContent.style.maxHeight = '0px';
+      this.expandIcon.style.transform = 'rotate(0deg)';
+      this.expandCount.style.display = 'inline';
+    }
   }
 
   async loadSettings() {
@@ -306,6 +560,9 @@ class SidebarManager {
     const message = this.chatInput.value.trim();
     if (!message) return;
 
+    // Collapse the expandable section if it's open
+    this.collapseExpandableSection();
+
     // Remove welcome message if it exists
     const welcomeMessage = this.chatMessages.querySelector('.welcome-message');
     if (welcomeMessage) {
@@ -319,23 +576,101 @@ class SidebarManager {
     // Show initial loading message
     this.showLoadingMessage('Starting video analysis...');
 
+    // Create a streaming message ID for this request
+    this.currentStreamingMessageId = `streaming-${Date.now()}`;
+    this.isStreaming = true;
+
     try {
       const response = await this.processMessage(message);
+      
+      // Hide loader
       this.hideLoadingMessage();
+      
+      // If streaming message exists, finalize it
+      const streamingMsg = document.getElementById(this.currentStreamingMessageId);
+      if (streamingMsg && this.isStreaming) {
+        // Get the raw text content
+        const textContainer = streamingMsg.querySelector('.streaming-text');
+        const rawText = textContainer ? textContainer.textContent : '';
+        
+        // Remove cursor
+        const cursor = streamingMsg.querySelector('.streaming-cursor');
+        if (cursor) {
+          cursor.remove();
+        }
+        
+        // Format the content with timestamps and markdown
+        const messageContent = streamingMsg.querySelector('.message-content');
+        if (messageContent && rawText) {
+          messageContent.innerHTML = this.formatMessageContent(rawText);
+        }
+        
+        // Apply timestamp click handlers
+        this.attachTimestampHandlers(streamingMsg);
+        
+        streamingMsg.classList.remove('streaming');
+        streamingMsg.classList.add('assistant-message');
+      } else if (!streamingMsg) {
+        // No streaming occurred, show the response normally
       this.addMessage('assistant', response);
+      }
+      
+      this.currentStreamingMessageId = null;
+      this.isStreaming = false;
     } catch (error) {
+      // Hide loader before showing error
       this.hideLoadingMessage();
-      this.addMessage('assistant', `Sorry, I encountered an error: ${error.message}`);
+      
+      // Remove streaming message if exists
+      const streamingMsg = document.getElementById(this.currentStreamingMessageId);
+      if (streamingMsg) {
+        streamingMsg.remove();
+      }
+      
+      // Log error to console only, don't show in UI
+      console.error('Error processing message:', error);
+      this.currentStreamingMessageId = null;
+      this.isStreaming = false;
     }
   }
 
-  async processMessage(message) {
-    // Check if video is indexed, if not, index it first
-    if (!this.videoIndexed) {
-      this.updateLoadingMessage('Checking if video needs indexing...');
-      await this.indexCurrentVideo();
+  updateStreamingResponse(chunk, fullText) {
+    // Hide loading message when first chunk arrives
+    this.hideLoadingMessage();
+    
+    console.log('Streaming chunk received:', chunk, 'Full text so far:', fullText.substring(0, 50) + '...');
+    
+    // Get or create streaming message
+    let streamingMsg = document.getElementById(this.currentStreamingMessageId);
+    
+    if (!streamingMsg) {
+      console.log('Creating new streaming message element');
+      streamingMsg = document.createElement('div');
+      streamingMsg.id = this.currentStreamingMessageId;
+      streamingMsg.className = 'message assistant-message streaming';
+      streamingMsg.innerHTML = `
+        <div class="message-content">
+          <div class="streaming-text"></div>
+          <div class="streaming-cursor"></div>
+        </div>
+      `;
+      this.chatMessages.appendChild(streamingMsg);
+      this.scrollToBottom();
     }
+    
+    // Update the text content with the accumulated text (plain text during streaming)
+    const textContainer = streamingMsg.querySelector('.streaming-text');
+    if (textContainer) {
+      // Store as plain text during streaming
+      textContainer.textContent = fullText;
+    }
+    
+    // Auto-scroll to show new content
+    this.scrollToBottom();
+  }
 
+  async processMessage(message) {
+    // Video should already be indexed by autoIndexVideo
     // Process the message based on content
     if (message.toLowerCase().includes('summarize') || message.toLowerCase().includes('summary')) {
       this.updateLoadingMessage('Preparing to generate video summary...');
@@ -353,41 +688,39 @@ class SidebarManager {
     }
   }
 
-  async indexCurrentVideo() {
-    const videoUrl = window.location.href;
+  async autoIndexVideo() {
+    // Disable input area during indexing
+    this.disableInput('Indexing video, please wait...');
+    
+    // Remove welcome message
+    const welcomeMessage = this.chatMessages.querySelector('.welcome-message');
+    if (welcomeMessage) {
+      welcomeMessage.remove();
+    }
+    
+    // Show loading message
+    this.showLoadingMessage('Checking if video is already indexed...');
     
     try {
-      console.log('Checking if video is already indexed...');
+      const videoUrl = window.location.href;
       
       // Check if video is already indexed
-      console.log('Sending getVideoId message to background script...');
-      
-      // Add timeout to prevent hanging
-      const messagePromise = chrome.runtime.sendMessage({
+      const existingVideoId = await chrome.runtime.sendMessage({
         action: 'getVideoId',
         videoUrl: videoUrl
       });
       
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Message timeout after 10 seconds')), 10000);
-      });
-      
-      const existingVideoId = await Promise.race([messagePromise, timeoutPromise]);
-      console.log('Received response from background script:', existingVideoId);
-      
       if (existingVideoId) {
         console.log('Video already indexed, ID:', existingVideoId);
         this.videoIndexed = true;
-        this.updateLoadingMessage('Video already indexed, proceeding with analysis...');
-        this.addMessage('assistant', 'Video is already indexed and ready for analysis!');
-        return { video_id: existingVideoId, already_indexed: true };
+        this.hideLoadingMessage();
+        this.addMessage('assistant', '✅ Video is already indexed and ready! You can ask questions, get summaries, or search for specific content.');
+        this.enableInput();
+        return;
       }
       
-      console.log('Video needs indexing, starting processing flow...');
-      this.updateLoadingMessage('Video needs indexing, starting processing...');
-      
-      // Start the comprehensive video processing flow
-      await this.showVideoProcessingFlow();
+      // Video needs indexing
+      this.updateLoadingMessage('Indexing video, this may take a few minutes...');
       
       const response = await chrome.runtime.sendMessage({
         action: 'indexVideo',
@@ -395,143 +728,36 @@ class SidebarManager {
       });
       
       console.log('Video indexing complete:', response);
-      this.hideVideoProcessingFlow();
       this.videoIndexed = true;
-      this.addMessage('assistant', 'Video processing complete! The video is now indexed and ready for AI analysis. You can ask questions, get summaries, or search for specific content!');
-      return response;
+      this.hideLoadingMessage();
+      this.addMessage('assistant', '✅ Video indexed successfully! You can now ask questions, get summaries, or search for specific content.');
+      this.enableInput();
+      
     } catch (error) {
       console.error('Failed to index video:', error);
-      this.hideVideoProcessingFlow();
-      this.addMessage('assistant', `Video processing failed: ${error.message}. Please try again.`);
-      throw error;
+      this.hideLoadingMessage();
+      // Don't show error message in UI, just log to console
+      this.enableInput();
     }
   }
 
-  async showVideoProcessingFlow() {
-    // Create a comprehensive processing flow display
-    const processingDiv = document.createElement('div');
-    processingDiv.className = 'message assistant-message video-processing-flow';
-    processingDiv.id = 'video-processing-flow';
-    processingDiv.innerHTML = `
-      <div class="message-content">
-        <div class="processing-header">
-          <h3>Video Processing Pipeline</h3>
-          <p>Processing your video for AI analysis...</p>
-        </div>
-        
-        <div class="processing-steps">
-          <div class="step" id="step-1">
-            <div class="step-icon">1</div>
-            <div class="step-content">
-              <div class="step-title">Downloading Video</div>
-              <div class="step-description">Retrieving video content from YouTube</div>
-              <div class="step-status">In Progress...</div>
-            </div>
-          </div>
-          
-          <div class="step" id="step-2">
-            <div class="step-icon">2</div>
-            <div class="step-content">
-              <div class="step-title">Processing Content</div>
-              <div class="step-description">Extracting audio, visual, and text data</div>
-              <div class="step-status">Waiting...</div>
-            </div>
-          </div>
-          
-          <div class="step" id="step-3">
-            <div class="step-icon">3</div>
-            <div class="step-content">
-              <div class="step-title">Uploading to Twelve Labs</div>
-              <div class="step-description">Sending video to AI processing engine</div>
-              <div class="step-status">Waiting...</div>
-            </div>
-          </div>
-          
-          <div class="step" id="step-4">
-            <div class="step-icon">4</div>
-            <div class="step-content">
-              <div class="step-title">AI Indexing</div>
-              <div class="step-description">Creating searchable embeddings and analysis</div>
-              <div class="step-status">Waiting...</div>
-            </div>
-          </div>
-          
-          <div class="step" id="step-5">
-            <div class="step-icon">5</div>
-            <div class="step-content">
-              <div class="step-title">Ready for Analysis</div>
-              <div class="step-description">Video is indexed and ready for questions</div>
-              <div class="step-status">Waiting...</div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="processing-progress">
-          <div class="progress-bar">
-            <div class="progress-fill" id="progress-fill"></div>
-          </div>
-          <div class="progress-text" id="progress-text">Starting video processing...</div>
-        </div>
-      </div>
-    `;
-
-    this.chatMessages.appendChild(processingDiv);
-    this.scrollToBottom();
-
-    // Start the step-by-step animation
-    this.animateProcessingSteps();
+  disableInput(placeholder = 'Please wait...') {
+    this.chatInput.disabled = true;
+    this.chatInput.placeholder = placeholder;
+    this.sendBtn.disabled = true;
+    this.chatInput.style.opacity = '0.6';
+    this.sendBtn.style.opacity = '0.6';
   }
 
-  animateProcessingSteps() {
-    const steps = [
-      { id: 'step-1', title: 'Downloading Video', description: 'Retrieving video content from YouTube', duration: 2000 },
-      { id: 'step-2', title: 'Processing Content', description: 'Extracting audio, visual, and text data', duration: 3000 },
-      { id: 'step-3', title: 'Uploading to Twelve Labs', description: 'Sending video to AI processing engine', duration: 4000 },
-      { id: 'step-4', title: 'AI Indexing', description: 'Creating searchable embeddings and analysis', duration: 5000 },
-      { id: 'step-5', title: 'Ready for Analysis', description: 'Video is indexed and ready for questions', duration: 1000 }
-    ];
-
-    let currentStep = 0;
-    const progressFill = document.getElementById('progress-fill');
-    const progressText = document.getElementById('progress-text');
-
-    const processStep = () => {
-      if (currentStep < steps.length) {
-        const step = steps[currentStep];
-        const stepElement = document.getElementById(step.id);
-        
-        // Update step status
-        stepElement.classList.add('active');
-        stepElement.querySelector('.step-status').textContent = 'In Progress...';
-        
-        // Update progress
-        const progress = ((currentStep + 1) / steps.length) * 100;
-        progressFill.style.width = `${progress}%`;
-        progressText.textContent = `${step.title}...`;
-        
-        // Complete step after duration
-        setTimeout(() => {
-          stepElement.classList.add('completed');
-          stepElement.querySelector('.step-status').textContent = 'Completed';
-          currentStep++;
-          processStep();
-        }, step.duration);
-      } else {
-        // All steps completed
-        progressText.textContent = 'Video processing complete! Ready for analysis.';
-        progressFill.style.width = '100%';
-      }
-    };
-
-    processStep();
+  enableInput() {
+    this.chatInput.disabled = false;
+    this.chatInput.placeholder = 'Ask about this video...';
+    this.sendBtn.disabled = false;
+    this.chatInput.style.opacity = '1';
+    this.sendBtn.style.opacity = '1';
   }
 
-  hideVideoProcessingFlow() {
-    const processingFlow = document.getElementById('video-processing-flow');
-    if (processingFlow) {
-      processingFlow.remove();
-    }
-  }
+
 
   handleProcessingStatusUpdate(step, description) {
     // Update the processing flow with real-time status
@@ -696,6 +922,11 @@ class SidebarManager {
       return `Error: ${response.error}`;
     }
 
+    // Handle string result from backend
+    if (typeof response.result === 'string') {
+      return response.result;
+    }
+
     let formatted = '';
     
     if (response.title) {
@@ -716,6 +947,11 @@ class SidebarManager {
   formatChaptersResponse(response) {
     if (response.error) {
       return `Error: ${response.error}`;
+    }
+
+    // Handle string result from backend
+    if (typeof response.result === 'string') {
+      return response.result;
     }
 
     if (!response.chapters || response.chapters.length === 0) {
@@ -743,6 +979,11 @@ class SidebarManager {
       return `Error: ${response.error}`;
     }
 
+    // Handle string result from backend
+    if (typeof response.result === 'string') {
+      return response.result;
+    }
+
     if (!response.highlights || response.highlights.length === 0) {
       return 'No highlights found in this video.';
     }
@@ -767,29 +1008,25 @@ class SidebarManager {
         throw new Error('Video not indexed yet. Please wait for indexing to complete.');
       }
       
-      // Use the new analyze API for better search results
+      // Use the analyze API for search results
       const response = await chrome.runtime.sendMessage({
         action: 'analyzeVideo',
         videoId: videoId,
-        type: 'search',
+        type: 'open-ended',
         customPrompt: `Search through this video for content related to: "${query}". Provide timestamps and descriptions of relevant segments.`
       });
       return this.formatSearchResults(response, query);
     } catch (error) {
-      // Fallback to old search method if analyze fails
-      try {
-        const fallbackResponse = await chrome.runtime.sendMessage({
-          action: 'searchVideo',
-          query: query
-        });
-        return this.formatSearchResults(fallbackResponse, query);
-      } catch (fallbackError) {
         throw error;
-      }
     }
   }
 
   formatSearchResults(results, query) {
+    // Handle string result from backend
+    if (typeof results.result === 'string') {
+      return results.result;
+    }
+
     // Handle new structured format from analyze API
     if (results.results && Array.isArray(results.results)) {
       if (results.results.length === 0) {
@@ -863,6 +1100,36 @@ class SidebarManager {
 
     this.chatMessages.appendChild(messageDiv);
     this.scrollToBottom();
+    
+    // Add click handlers to timestamp buttons
+    this.attachTimestampHandlers(messageDiv);
+  }
+
+  attachTimestampHandlers(messageDiv) {
+    const timestampButtons = messageDiv.querySelectorAll('.timestamp-btn');
+    timestampButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const seconds = parseInt(btn.getAttribute('data-seconds'));
+        this.seekToTimestamp(seconds);
+      });
+    });
+  }
+
+  seekToTimestamp(seconds) {
+    try {
+      // Get the YouTube video player
+      const video = document.querySelector('video.html5-main-video');
+      if (video) {
+        video.currentTime = seconds;
+        video.play();
+        console.log(`Jumped to ${seconds} seconds`);
+      } else {
+        console.error('YouTube video player not found');
+      }
+    } catch (error) {
+      console.error('Error seeking to timestamp:', error);
+    }
   }
 
   formatMessageContent(content) {
@@ -889,7 +1156,52 @@ class SidebarManager {
     // Wrap consecutive list items in ul tags
     formatted = formatted.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
     
+    // Convert timestamps to clickable buttons
+    formatted = this.formatTimestamps(formatted);
+    
     return formatted;
+  }
+
+  formatTimestamps(text) {
+    // First, handle seconds-only format: 131s, (131s), etc.
+    text = text.replace(/(\()?\b(\d+)s\b(\))?/g, (match, openParen, seconds, closeParen) => {
+      const totalSeconds = parseInt(seconds);
+      const displayTime = openParen ? `(${seconds}s)` : `${seconds}s`;
+      
+      return `<button class="timestamp-btn" data-seconds="${totalSeconds}" title="Jump to ${displayTime}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+        <span>${displayTime}</span>
+      </button>`;
+    });
+    
+    // Then handle standard formats: (00:00), 00:00, (0:00), 0:00, (00:00:00), 00:00:00
+    const timestampRegex = /(\()?\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b(\))?/g;
+    
+    return text.replace(timestampRegex, (match, openParen, hours, minutes, seconds, closeParen) => {
+      // Calculate total seconds
+      let totalSeconds;
+      if (seconds !== undefined) {
+        // Format: HH:MM:SS or H:MM:SS
+        totalSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds);
+      } else {
+        // Format: MM:SS or M:SS
+        totalSeconds = parseInt(hours) * 60 + parseInt(minutes);
+      }
+      
+      // Create clickable timestamp button
+      const displayTime = openParen ? `(${hours}:${minutes}${seconds ? ':' + seconds : ''})` : `${hours}:${minutes}${seconds ? ':' + seconds : ''}`;
+      
+      return `<button class="timestamp-btn" data-seconds="${totalSeconds}" title="Jump to ${displayTime}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+        <span>${displayTime}</span>
+      </button>`;
+    });
   }
 
   showTypingIndicator() {
@@ -972,6 +1284,9 @@ class SidebarManager {
   }
 
   closeSidebar() {
+    // Notify parent that sidebar is closing
+    window.dispatchEvent(new CustomEvent('yt-assistant-sidebar-closed'));
+    
     this.container.remove();
     const toggleBtn = document.getElementById('video-assistant-toggle');
     if (toggleBtn) {
@@ -995,9 +1310,9 @@ class SidebarManager {
         </div>
         <div class="settings-body">
           <div class="setting-item">
-            <label for="api-key">Twelve Labs API Key:</label>
-            <input type="password" id="api-key" placeholder="Enter your API key" />
-            <button id="save-api-key">Save</button>
+            <label for="backend-url">Backend URL:</label>
+            <input type="text" id="backend-url" placeholder="http://localhost:5000" />
+            <button id="save-backend-url">Save</button>
           </div>
           <div class="setting-item">
             <label>Theme:</label>
@@ -1017,20 +1332,20 @@ class SidebarManager {
       modal.remove();
     });
 
-    modal.querySelector('#save-api-key').addEventListener('click', async () => {
-      const apiKey = modal.querySelector('#api-key').value;
-      if (apiKey) {
+    modal.querySelector('#save-backend-url').addEventListener('click', async () => {
+      const backendUrl = modal.querySelector('#backend-url').value;
+      if (backendUrl) {
         await chrome.runtime.sendMessage({
-          action: 'saveApiKey',
-          apiKey: apiKey
+          action: 'saveBackendUrl',
+          backendUrl: backendUrl
         });
         modal.remove();
       }
     });
 
     // Load current settings
-    chrome.storage.sync.get(['apiKey', 'theme']).then(result => {
-      modal.querySelector('#api-key').value = result.apiKey || '';
+    chrome.storage.sync.get(['backendUrl', 'theme']).then(result => {
+      modal.querySelector('#backend-url').value = result.backendUrl || 'http://localhost:5000';
       modal.querySelector('#theme-select').value = result.theme || 'light';
     });
   }
@@ -1039,13 +1354,11 @@ class SidebarManager {
     this.videoId = videoId;
     this.videoIndexed = false;
     
-    // Clear chat messages and show welcome
-    this.chatMessages.innerHTML = `
-      <div class="welcome-message">
-        <p>Hi! I can help you understand this video better.</p>
-        <p>Ask me questions, get summaries, or search for specific topics!</p>
-      </div>
-    `;
+    // Clear chat messages
+    this.chatMessages.innerHTML = '';
+    
+    // Restart auto-indexing for the new video
+    this.autoIndexVideo();
   }
 
   handleStreamingUpdate(type, data) {

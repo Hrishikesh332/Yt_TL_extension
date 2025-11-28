@@ -1,8 +1,5 @@
-importScripts('video-downloader.js');
-
 class BackgroundService {
   constructor() {
-    this.videoDownloader = new VideoDownloader();
     this.setupMessageHandlers();
     this.setupInstallHandlers();
   }
@@ -10,28 +7,20 @@ class BackgroundService {
   setupMessageHandlers() {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       switch (request.action) {
-        case 'getApiKey':
-          this.getApiKey().then(sendResponse);
-          return true; // Keep message channel open for async response
-          
-        case 'saveApiKey':
-          this.saveApiKey(request.apiKey).then(sendResponse);
+        case 'getBackendUrl':
+          this.getBackendUrl().then(sendResponse);
           return true;
           
-        case 'saveConfig':
-          this.saveConfig(request.apiKey, request.indexId).then(sendResponse);
+        case 'saveBackendUrl':
+          this.saveBackendUrl(request.backendUrl).then(sendResponse);
           return true;
           
-        case 'callTwelveLabsAPI':
-          this.callTwelveLabsAPI(request.endpoint, request.data).then(sendResponse);
+        case 'checkBackendHealth':
+          this.checkBackendHealth().then(sendResponse);
           return true;
           
         case 'indexVideo':
           this.indexVideo(request.videoUrl, sender.tab.id).then(sendResponse);
-          return true;
-          
-        case 'searchVideo':
-          this.searchVideo(request.query, request.indexId).then(sendResponse);
           return true;
           
         case 'analyzeVideo':
@@ -53,10 +42,6 @@ class BackgroundService {
           });
           return true;
           
-        case 'getIndexId':
-          this.getIndexId().then(sendResponse);
-          return true;
-          
         case 'test':
           console.log('Background: Received test message');
           sendResponse({status: 'ok', timestamp: Date.now()});
@@ -68,125 +53,117 @@ class BackgroundService {
   setupInstallHandlers() {
     chrome.runtime.onInstalled.addListener((details) => {
       if (details.reason === 'install') {
-        // Auto-configure with provided credentials (will be replaced by build script)
+        // Auto-configure with backend URL (will be replaced by build script)
         chrome.storage.sync.set({
           theme: 'light',
-          apiKey: 'REPLACE_WITH_API_KEY',
-          indexId: 'REPLACE_WITH_INDEX_ID',
+          backendUrl: 'http://localhost:5000',
           autoIndex: true,
           autoConfigured: true,
           configuredAt: new Date().toISOString()
         }, () => {
-          console.log('Extension auto-configured with API key and Index ID');
+          console.log('Extension auto-configured with backend URL');
         });
       }
     });
   }
 
-  async getApiKey() {
-    const result = await chrome.storage.sync.get(['apiKey']);
-    return result.apiKey || '';
+  async getBackendUrl() {
+    const result = await chrome.storage.sync.get(['backendUrl']);
+    return result.backendUrl || 'http://localhost:5000';
   }
 
-  async saveApiKey(apiKey) {
-    await chrome.storage.sync.set({ apiKey });
+  async saveBackendUrl(backendUrl) {
+    await chrome.storage.sync.set({ backendUrl });
     return { success: true };
   }
 
-  async saveConfig(apiKey, indexId) {
-    await chrome.storage.sync.set({ 
-      apiKey: apiKey,
-      indexId: indexId
-    });
-    return { success: true };
-  }
-
-  async getIndexId() {
-    const result = await chrome.storage.sync.get(['indexId']);
-    return result.indexId || '';
-  }
-
-  async callTwelveLabsAPI(endpoint, data) {
+  async checkBackendHealth() {
     try {
-      const apiKey = await this.getApiKey();
-      if (!apiKey) {
-        throw new Error('API key not configured');
-      }
-
-      const response = await fetch(`https://api.twelvelabs.io/v1.2${endpoint}`, {
-        method: data.method || 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey
-        },
-        body: data.body ? JSON.stringify(data.body) : undefined
-      });
-
+      const backendUrl = await this.getBackendUrl();
+      const response = await fetch(`${backendUrl}/health`);
       if (!response.ok) {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        throw new Error(`Backend health check failed: ${response.status}`);
       }
-
       return await response.json();
     } catch (error) {
-      console.error('Twelve Labs API error:', error);
-      throw error;
+      console.error('Backend health check error:', error);
+      throw new Error(`Cannot connect to backend: ${error.message}`);
     }
+  }
+
+
+  isValidYouTubeUrl(url) {
+    const patterns = [
+      /^https?:\/\/(www\.)?youtube\.com\/watch\?v=[\w-]+/,
+      /^https?:\/\/youtu\.be\/[\w-]+/,
+      /^https?:\/\/(www\.)?youtube\.com\/embed\/[\w-]+/
+    ];
+    return patterns.some(pattern => pattern.test(url));
   }
 
   async indexVideo(videoUrl, tabId) {
     try {
       // Validate YouTube URL
-      if (!this.videoDownloader.isValidYouTubeUrl(videoUrl)) {
+      if (!this.isValidYouTubeUrl(videoUrl)) {
         throw new Error('Invalid YouTube URL');
+      }
+
+      // Get backend URL
+      const backendUrl = await this.getBackendUrl();
+      if (!backendUrl || backendUrl === 'REPLACE_WITH_BACKEND_URL') {
+        throw new Error('Backend URL not configured');
       }
 
       // Send status update: Downloading Video
       this.sendStatusUpdate(tabId, 'Downloading Video', 'Retrieving video content from YouTube');
 
-      // Download the video
-      const videoData = await this.videoDownloader.downloadVideo(videoUrl);
-      
       // Send status update: Processing Content
       this.sendStatusUpdate(tabId, 'Processing Content', 'Extracting audio, visual, and text data');
-      
-      // Get API key
-      const apiKey = await this.getApiKey();
-      if (!apiKey) {
-        throw new Error('API key not configured');
-      }
-
-      // Get stored index ID
-      const indexId = await this.getIndexId();
-      if (!indexId) {
-        throw new Error('Index ID not configured');
-      }
       
       // Send status update: Uploading to Twelve Labs
       this.sendStatusUpdate(tabId, 'Uploading to Twelve Labs', 'Sending video to AI processing engine');
       
-      // Upload to Twelve Labs
-      const result = await this.videoDownloader.uploadToTwelveLabs(videoData, apiKey, indexId);
+      // Call backend API to download and index video
+      const response = await fetch(`${backendUrl}/download-and-index`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          youtube_url: videoUrl
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `Backend request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
       
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
       // Send status update: AI Indexing
       this.sendStatusUpdate(tabId, 'AI Indexing', 'Creating searchable embeddings and analysis');
       
       // Store the video ID for future analysis calls
-      if (result._id || result.video_id) {
-        const videoId = result.video_id || result._id;
-        await this.storeVideoId(videoUrl, videoId);
+      if (result.video_id) {
+        await this.storeVideoId(videoUrl, result.video_id);
         
         // Send final status update
         this.sendStatusUpdate(tabId, 'Ready for Analysis', 'Video is indexed and ready for questions');
         
         // Return the result with the video ID
         return {
-          ...result,
-          video_id: videoId,
-          success: true
+          video_id: result.video_id,
+          success: true,
+          message: result.message
         };
       }
       
-      return result;
+      throw new Error('No video_id returned from backend');
     } catch (error) {
       console.error('Video indexing error:', error);
       this.sendStatusUpdate(tabId, 'Error', `Processing failed: ${error.message}`);
@@ -257,27 +234,12 @@ class BackgroundService {
   }
 
 
-  async searchVideo(query, indexId = null) {
-    try {
-      const searchData = {
-        method: 'POST',
-        body: {
-          query: query,
-          ...(indexId && { index_id: indexId })
-        }
-      };
-      return await this.callTwelveLabsAPI('/search', searchData);
-    } catch (error) {
-      console.error('Video search error:', error);
-      throw error;
-    }
-  }
 
   async analyzeVideo(videoId, type, prompt = null, customPrompt = null, tabId = null) {
     try {
-      const apiKey = await this.getApiKey();
-      if (!apiKey) {
-        throw new Error('API key not configured');
+      const backendUrl = await this.getBackendUrl();
+      if (!backendUrl || backendUrl === 'REPLACE_WITH_BACKEND_URL') {
+        throw new Error('Backend URL not configured');
       }
 
       // Send status update
@@ -285,296 +247,112 @@ class BackgroundService {
         this.sendStatusUpdate(tabId, 'Preparing Analysis', 'Setting up AI analysis request...');
       }
 
-      // Define analysis prompts and schemas based on type
-      const analysisConfigs = {
-        summary: {
-          prompt: customPrompt || "I want to generate a description for my video with the following format - Title of the video, followed by a summary in 2-3 sentences, highlighting the main topic, key events, and concluding remarks.",
-          schema: {
-            type: "object",
-            properties: {
-              title: { type: "string" },
-              summary: { type: "string" },
-              keywords: { type: "array", items: { type: "string" } }
-            }
-          }
-        },
-        chapters: {
-          prompt: customPrompt || "Analyze this video and break it down into logical chapters or sections. For each chapter, provide a title, start time, and brief description of what happens in that section.",
-          schema: {
-            type: "object",
-            properties: {
-              chapters: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    title: { type: "string" },
-                    start_time: { type: "string" },
-                    description: { type: "string" }
-                  }
-                }
-              }
-            }
-          }
-        },
-        highlights: {
-          prompt: customPrompt || "Identify the key highlights and most important moments in this video. For each highlight, provide a timestamp and brief description of what makes it significant.",
-          schema: {
-            type: "object",
-            properties: {
-              highlights: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    timestamp: { type: "string" },
-                    description: { type: "string" },
-                    importance: { type: "string", enum: ["high", "medium", "low"] }
-                  }
-                }
-              }
-            }
-          }
-        },
-        search: {
-          prompt: customPrompt || "Search through this video for content related to the query. Provide timestamps and descriptions of relevant segments.",
-          schema: {
-            type: "object",
-            properties: {
-              results: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    timestamp: { type: "string" },
-                    description: { type: "string" },
-                    relevance_score: { type: "number" }
-                  }
-                }
-              }
-            }
-          }
-        }
+      // Map analysis types to backend format
+      const analysisTypeMap = {
+        'summary': 'summary',
+        'chapters': 'chapter',
+        'highlights': 'highlight',
+        'search': 'open-ended',
+        'open-ended': 'open-ended'
       };
 
-      const config = analysisConfigs[type];
-      if (!config) {
-        throw new Error(`Unknown analysis type: ${type}`);
+      const backendAnalysisType = analysisTypeMap[type] || 'open-ended';
+
+      // Build request body
+      const requestBody = {
+        video_id: videoId,
+        analysis_type: backendAnalysisType
+      };
+
+      // Add prompt if provided (for open-ended or custom prompts)
+      if (prompt || customPrompt) {
+        requestBody.prompt = customPrompt || prompt;
       }
 
       // Send status update
       if (tabId) {
-        this.sendStatusUpdate(tabId, 'Sending Request', 'Sending analysis request to Twelve Labs API...');
+        this.sendStatusUpdate(tabId, 'Connecting to AI', 'Starting streaming analysis...');
       }
 
-      const requestBody = {
-        video_id: videoId,
-        prompt: config.prompt,
-        temperature: 0.2,
-        stream: false, // Set to true for streaming responses
-        response_format: {
-          type: "json_schema",
-          json_schema: config.schema
-        },
-        max_tokens: 2000
-      };
-
-      const response = await fetch('https://api.twelvelabs.io/v1.3/analyze', {
+      const response = await fetch(`${backendUrl}/analyze`, {
         method: 'POST',
         headers: {
-          'x-api-key': apiKey,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
-        throw new Error(`Analysis failed: ${response.status} ${response.statusText}`);
-      }
-
-      // Send status update
-      if (tabId) {
-        this.sendStatusUpdate(tabId, 'Processing Response', 'Processing AI analysis results...');
-      }
-
-      const result = await response.json();
-      return this.parseAnalysisResult(result, type);
-    } catch (error) {
-      console.error('Video analysis error:', error);
-      throw error;
-    }
-  }
-
-  parseAnalysisResult(result, type) {
-    try {
-      // Parse the JSON data from the response
-      const parsedData = JSON.parse(result.data);
-      
-      // Format the result based on analysis type
-      switch (type) {
-        case 'summary':
-          return {
-            title: parsedData.title || 'Video Summary',
-            summary: parsedData.summary || 'No summary available',
-            keywords: parsedData.keywords || []
-          };
-        
-        case 'chapters':
-          return {
-            chapters: parsedData.chapters || []
-          };
-        
-        case 'highlights':
-          return {
-            highlights: parsedData.highlights || []
-          };
-        
-        case 'search':
-          return {
-            results: parsedData.results || []
-          };
-        
-        default:
-          return parsedData;
-      }
-    } catch (error) {
-      console.error('Error parsing analysis result:', error);
-      // Fallback to raw data if parsing fails
-      return {
-        raw_data: result.data,
-        error: 'Failed to parse structured response'
-      };
-    }
-  }
-
-  async analyzeVideoStream(videoId, type, prompt = null, customPrompt = null, tabId) {
-    try {
-      const apiKey = await this.getApiKey();
-      if (!apiKey) {
-        throw new Error('API key not configured');
-      }
-
-      // Use the same analysis configs as the regular analyze function
-      const analysisConfigs = {
-        summary: {
-          prompt: customPrompt || "I want to generate a description for my video with the following format - Title of the video, followed by a summary in 2-3 sentences, highlighting the main topic, key events, and concluding remarks.",
-          schema: {
-            type: "object",
-            properties: {
-              title: { type: "string" },
-              summary: { type: "string" },
-              keywords: { type: "array", items: { type: "string" } }
-            }
-          }
-        },
-        chapters: {
-          prompt: customPrompt || "Analyze this video and break it down into logical chapters or sections. For each chapter, provide a title, start time, and brief description of what happens in that section.",
-          schema: {
-            type: "object",
-            properties: {
-              chapters: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    title: { type: "string" },
-                    start_time: { type: "string" },
-                    description: { type: "string" }
-                  }
-                }
-              }
-            }
-          }
-        },
-        highlights: {
-          prompt: customPrompt || "Identify the key highlights and most important moments in this video. For each highlight, provide a timestamp and brief description of what makes it significant.",
-          schema: {
-            type: "object",
-            properties: {
-              highlights: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    timestamp: { type: "string" },
-                    description: { type: "string" },
-                    importance: { type: "string", enum: ["high", "medium", "low"] }
-                  }
-                }
-              }
-            }
-          }
-        }
-      };
-
-      const config = analysisConfigs[type];
-      if (!config) {
-        throw new Error(`Unknown analysis type: ${type}`);
-      }
-
-      const requestBody = {
-        video_id: videoId,
-        prompt: config.prompt,
-        temperature: 0.2,
-        stream: true, // Enable streaming
-        response_format: {
-          type: "json_schema",
-          json_schema: config.schema
-        },
-        max_tokens: 2000
-      };
-
-      const response = await fetch('https://api.twelvelabs.io/v1.3/analyze', {
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Streaming analysis failed: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `Analysis failed: ${response.status} ${response.statusText}`);
       }
 
       // Handle streaming response
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let fullText = '';
+      let metadata = null;
 
       while (true) {
         const { done, value } = await reader.read();
+        
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        buffer = lines.pop(); // Keep the last incomplete line
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') {
-              return { success: true, completed: true };
+          if (!line.trim()) continue;
+
+          try {
+            const data = JSON.parse(line);
+
+            // First line contains metadata
+            if (data.status === 'success' && data.streaming) {
+              metadata = data;
+              if (tabId) {
+                this.sendStatusUpdate(tabId, 'Streaming Response', 'Receiving AI analysis...');
+              }
+              continue;
             }
 
-            try {
-              const parsed = JSON.parse(data);
+            // Text chunks
+            if (data.chunk) {
+              fullText += data.chunk;
+              
               // Send streaming update to content script
-              chrome.tabs.sendMessage(tabId, {
-                action: 'streamingUpdate',
-                type: type,
-                data: parsed
-              });
-            } catch (error) {
-              console.warn('Failed to parse streaming data:', error);
+              if (tabId) {
+                chrome.tabs.sendMessage(tabId, {
+                  action: 'streamingChunk',
+                  chunk: data.chunk,
+                  fullText: fullText
+                });
+              }
             }
+
+            // Done marker
+            if (data.done) {
+              console.log('Streaming complete, full text:', fullText);
+              break;
+            }
+          } catch (e) {
+            console.warn('Failed to parse NDJSON line:', line, e);
           }
         }
       }
 
-      return { success: true, completed: true };
+      // Return the complete result
+      return {
+        result: fullText,
+        video_id: metadata?.video_id || videoId,
+        analysis_type: metadata?.analysis_type || backendAnalysisType,
+        success: true,
+        streaming: true
+      };
     } catch (error) {
-      console.error('Streaming analysis error:', error);
+      console.error('Video analysis error:', error);
       throw error;
     }
   }

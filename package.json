@@ -5,7 +5,8 @@
   "scripts": {
     "generate-icons": "node generate-icons.js",
     "build": "node build.js",
-    "dev": "npm run build && echo 'Extension built with environment variables'"
+    "dev": "npm run build && echo 'Extension built with environment variables'",
+    "test": "node test-backend.js"
   },
   "devDependencies": {
     "canvas": "^2.11.2",
