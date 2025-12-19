@@ -458,6 +458,18 @@ body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #prima
   overflow-x: hidden !important;
 }
 
+/* Ensure video player can render properly */
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #movie_player {
+  max-width: 100% !important;
+  width: 100% !important;
+  position: relative !important;
+}
+
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) .ytp-player-content {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
 /* Adjust columns layout for video page */
 body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #columns {
   display: flex !important;
@@ -468,16 +480,20 @@ body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #colum
 
 /* Constrain video player width to prevent overlap */
 body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #player-container,
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) .html5-video-container,
 body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #player {
   max-width: calc(100vw - 460px) !important;
-  overflow: hidden !important;
+  width: 100% !important;
+}
+
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) .html5-video-container {
+  max-width: 100% !important;
+  width: 100% !important;
 }
 
 body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) video.html5-main-video {
   max-width: 100% !important;
   width: 100% !important;
-  height: auto !important;
+  display: block !important;
 }
 
 /* Keep video-related content (description, comments) constrained */
@@ -502,13 +518,20 @@ body.yt-assistant-active ytd-watch-flexy[theater] #player-theater-container {
 }
 
 body.yt-assistant-active ytd-watch-flexy[theater] #player-container,
-body.yt-assistant-active ytd-watch-flexy[theater] .html5-video-container,
 body.yt-assistant-active ytd-watch-flexy[theater] #movie_player {
   max-width: calc(100vw - 425px) !important;
+  width: calc(100vw - 425px) !important;
+}
+
+body.yt-assistant-active ytd-watch-flexy[theater] .html5-video-container {
+  max-width: 100% !important;
+  width: 100% !important;
 }
 
 body.yt-assistant-active ytd-watch-flexy[theater] video.html5-main-video {
-  max-width: calc(100vw - 425px) !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  display: block !important;
 }
 
 /* In theater mode, show recommendations below if they exist */
