@@ -22,6 +22,95 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
+/* YouTube Header Button (next to search) */
+.yt-assistant-header-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 14px !important;
+  margin: 0 8px !important;
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  border-radius: 18px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  position: relative !important;
+  z-index: 100 !important;
+  flex-shrink: 0 !important;
+  vertical-align: middle !important;
+}
+
+.yt-assistant-header-button:hover {
+  background: rgba(0, 0, 0, 0.1) !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.yt-assistant-header-button.active {
+  background: rgba(0, 0, 0, 0.15) !important;
+  border-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+.yt-assistant-header-text {
+  font-family: 'Roboto', Arial, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #0f0f0f !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+}
+
+.yt-assistant-header-icon {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: none !important;
+}
+
+.yt-assistant-header-icon img {
+  width: 20px !important;
+  height: 20px !important;
+  display: block !important;
+  object-fit: contain !important;
+  pointer-events: none !important;
+}
+
+/* Dark mode support for header button */
+html[dark] .yt-assistant-header-button,
+[dark] .yt-assistant-header-button {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html[dark] .yt-assistant-header-button:hover,
+[dark] .yt-assistant-header-button:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+html[dark] .yt-assistant-header-button.active,
+[dark] .yt-assistant-header-button.active {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+html[dark] .yt-assistant-header-text,
+[dark] .yt-assistant-header-text {
+  color: #f1f1f1 !important;
+}
+
+html[dark] .yt-assistant-header-icon img,
+[dark] .yt-assistant-header-icon img {
+  filter: brightness(0) invert(1) !important;
+}
+
 /* YouTube Player Control Button */
 .yt-assistant-player-button {
   width: 48px !important;
@@ -183,6 +272,284 @@
   color: #81c784;
 }
 
+/* YouTube Layout Adjustment */
+html body.yt-assistant-active {
+  overflow-x: hidden !important;
+}
+
+/* Force the entire page to shift left when sidebar is active */
+body.yt-assistant-active {
+  overflow-x: hidden !important;
+}
+
+body.yt-assistant-active > ytd-app {
+  max-width: calc(100vw - 425px) !important;
+  width: calc(100vw - 425px) !important;
+}
+
+/* Add smooth transitions to YouTube app */
+ytd-app {
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  will-change: max-width, width;
+  overflow-x: hidden !important;
+}
+
+#masthead-container {
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  will-change: max-width, width;
+  overflow-x: hidden !important;
+}
+
+/* Default: Squeeze layout for ALL pages (home, search, channels, etc.) */
+body.yt-assistant-active ytd-app {
+  max-width: calc(100vw - 425px) !important;
+  width: calc(100vw - 425px) !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box !important;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+body.yt-assistant-active #masthead-container {
+  max-width: calc(100vw - 425px) !important;
+  width: calc(100vw - 425px) !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box !important;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Force the main content area to shift */
+body.yt-assistant-active #content {
+  max-width: calc(100vw - 425px) !important;
+  width: calc(100vw - 425px) !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box !important;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Ensure content area stays within bounds */
+body.yt-assistant-active #page-manager {
+  max-width: calc(100vw - 425px) !important;
+  width: calc(100vw - 425px) !important;
+  overflow-x: hidden !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box !important;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+body.yt-assistant-active ytd-page-manager {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Home page specific - ensure everything shifts left smoothly */
+body.yt-assistant-active ytd-browse[page-subtype="home"],
+body.yt-assistant-active ytd-browse {
+  max-width: 100% !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  overflow-x: hidden !important;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+body.yt-assistant-active ytd-browse #primary,
+body.yt-assistant-active ytd-browse #primary-inner {
+  max-width: 100% !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  overflow-x: hidden !important;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+body.yt-assistant-active ytd-two-column-browse-results-renderer {
+  max-width: 100% !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  overflow-x: hidden !important;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Home page grid and sections */
+body.yt-assistant-active ytd-rich-grid-renderer,
+body.yt-assistant-active ytd-rich-item-renderer,
+body.yt-assistant-active ytd-rich-section-renderer {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+/* Ensure video grid items don't overflow */
+body.yt-assistant-active ytd-rich-grid-renderer #contents {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+/* Smooth transitions for video items */
+body.yt-assistant-active ytd-rich-item-renderer {
+  transition: transform 0.2s ease !important;
+}
+
+body.yt-assistant-active ytd-rich-item-renderer:hover {
+  transform: translateY(-2px) !important;
+}
+
+/* Home page left sidebar (guide) - ensure it stays within bounds */
+body.yt-assistant-active ytd-app #guide {
+  max-width: 100% !important;
+}
+
+/* Home page main content wrapper */
+body.yt-assistant-active ytd-browse #primary #contents {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+/* Ensure all flex containers on home page respect boundaries */
+body.yt-assistant-active ytd-browse #primary > * {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+/* Home page specific: Make sure the entire layout shifts left */
+body.yt-assistant-active:has(ytd-browse[page-subtype="home"]) ytd-app {
+  transform: translateX(0) !important;
+  left: 0 !important;
+  right: auto !important;
+}
+
+/* ===== NORMAL VIDEO PAGE MODE ===== */
+/* On video pages (NOT theater mode), don't squeeze - let sidebar cover recommendations */
+body.yt-assistant-active:has(ytd-watch-flexy:not([theater]):not([fullscreen])) ytd-app {
+  max-width: 100vw !important;
+  width: 100vw !important;
+}
+
+body.yt-assistant-active:has(ytd-watch-flexy:not([theater]):not([fullscreen])) #masthead-container {
+  max-width: 100vw !important;
+  width: 100vw !important;
+}
+
+/* Hide YouTube's recommendation sidebar (our sidebar replaces it) */
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #secondary,
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #secondary-inner {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  min-width: 0 !important;
+}
+
+/* Keep primary column on the left, don't let it expand beyond safe zone */
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #primary,
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #primary-inner {
+  max-width: calc(100vw - 460px) !important;
+  margin-right: 0 !important;
+  flex: 1 !important;
+  overflow-x: hidden !important;
+}
+
+/* Adjust columns layout for video page */
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #columns {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  max-width: 100vw !important;
+}
+
+/* Constrain video player width to prevent overlap */
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #player-container,
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) .html5-video-container,
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #player {
+  max-width: calc(100vw - 460px) !important;
+  overflow: hidden !important;
+}
+
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) video.html5-main-video {
+  max-width: 100% !important;
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* Keep video-related content (description, comments) constrained */
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #below,
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #info,
+body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #info-contents {
+  max-width: calc(100vw - 460px) !important;
+  overflow-x: hidden !important;
+}
+
+/* ===== THEATER/CINEMA MODE ===== */
+/* In theater mode, squeeze everything to the left */
+body.yt-assistant-active ytd-watch-flexy[theater] {
+  max-width: 100% !important;
+}
+
+body.yt-assistant-active ytd-watch-flexy[theater] #player-theater-container {
+  max-width: calc(100vw - 425px) !important;
+  width: calc(100vw - 425px) !important;
+  left: 0 !important;
+  right: auto !important;
+}
+
+body.yt-assistant-active ytd-watch-flexy[theater] #player-container,
+body.yt-assistant-active ytd-watch-flexy[theater] .html5-video-container,
+body.yt-assistant-active ytd-watch-flexy[theater] #movie_player {
+  max-width: calc(100vw - 425px) !important;
+}
+
+body.yt-assistant-active ytd-watch-flexy[theater] video.html5-main-video {
+  max-width: calc(100vw - 425px) !important;
+}
+
+/* In theater mode, show recommendations below if they exist */
+body.yt-assistant-active ytd-watch-flexy[theater] #secondary,
+body.yt-assistant-active ytd-watch-flexy[theater] #secondary-inner {
+  display: block !important;
+  visibility: visible !important;
+  max-width: calc(100vw - 425px) !important;
+}
+
+/* ===== FULLSCREEN MODE ===== */
+/* Don't interfere with fullscreen */
+body.yt-assistant-active ytd-watch-flexy[fullscreen] {
+  max-width: 100vw !important;
+}
+
+/* ===== GENERAL ADJUSTMENTS ===== */
+body.yt-assistant-active #page-manager {
+  max-width: 100% !important;
+}
+
+body.yt-assistant-active ytd-page-manager {
+  max-width: 100% !important;
+}
+
+body.yt-assistant-active #content {
+  max-width: 100% !important;
+}
+
+/* Adjust comments and description section */
+body.yt-assistant-active #below,
+body.yt-assistant-active ytd-comments {
+  max-width: 100% !important;
+}
+
+/* Adjust video metadata area */
+body.yt-assistant-active #info,
+body.yt-assistant-active #info-contents {
+  max-width: 100% !important;
+}
+
 /* Main Sidebar */
 .sidebar {
   position: fixed;
@@ -191,18 +558,49 @@
   width: 425px;
   height: 100vh;
   background: #ffffff;
-  border-left: 1px solid #f3f4f6;
+  border-left: 1px solid #e5e7eb;
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.08);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12),
+              -1px 0 0 rgba(0, 0, 0, 0.05);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
   backdrop-filter: blur(20px);
+  will-change: transform;
 }
 
 .sidebar.collapsed {
   transform: translateX(100%);
+}
+
+/* When sidebar is collapsed or not active, restore normal YouTube layout */
+body:has(.sidebar.collapsed) ytd-app,
+body:not(.yt-assistant-active) ytd-app {
+  max-width: 100vw !important;
+  width: 100vw !important;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+body:has(.sidebar.collapsed) #masthead-container,
+body:not(.yt-assistant-active) #masthead-container {
+  max-width: 100vw !important;
+  width: 100vw !important;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Ensure no overflow when returning to normal */
+body:not(.yt-assistant-active) #page-manager,
+body:not(.yt-assistant-active) #content,
+body:not(.yt-assistant-active) #primary {
+  max-width: 100% !important;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .sidebar.minimized {
@@ -216,35 +614,43 @@
 
 /* Dark Theme */
 .sidebar.dark-theme {
-  background: #0f0f0f;
-  border-left-color: #1f2937;
-  color: #f9fafb;
+  background: #0a0a0a;
+  border-left-color: #2a2a2a;
+  color: #e5e5e5;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5),
+              -1px 0 0 rgba(255, 255, 255, 0.05);
 }
 
 .sidebar.dark-theme .sidebar-header {
-  background: #0f0f0f;
-  border-bottom-color: #1f2937;
+  background: #0a0a0a;
+  border-bottom-color: #1a1a1a;
 }
 
 .sidebar.dark-theme .chat-input {
-  background: #1f2937;
-  border-color: #374151;
-  color: #f9fafb;
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+  color: #e5e5e5;
 }
 
 .sidebar.dark-theme .message {
-  background: #1f2937;
-  border-color: #374151;
+  background: #1a1a1a;
+  border-color: #2a2a2a;
 }
 
 /* Quick actions dark theme styles removed */
 
 .sidebar.dark-theme .message-content code {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  color: #a78bfa;
 }
 
 .sidebar.dark-theme .message-content pre {
-  background: rgba(255, 255, 255, 0.1);
+  background: #0f0f0f;
+  border-color: #2a2a2a;
+}
+
+.sidebar.dark-theme .welcome-message {
+  color: #9ca3af;
 }
 
 /* Professional Header */
@@ -386,21 +792,21 @@
 
 /* Dark theme header */
 .sidebar.dark-theme .sidebar-header {
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
 }
 
 .sidebar.dark-theme .sidebar-header::before {
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.1) 0%, rgba(51, 65, 85, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(10, 10, 10, 0.5) 0%, rgba(26, 26, 26, 0.5) 100%);
 }
 
 .sidebar.dark-theme .logo-container {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .sidebar.dark-theme .sidebar-controls {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Body */
@@ -414,10 +820,12 @@
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 28px;
+  padding: 72px 28px 24px 28px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  transition: background 0.3s ease;
+  scroll-behavior: smooth;
 }
 
 .welcome-message {
@@ -432,6 +840,7 @@
   align-items: center;
   justify-content: center;
   min-height: 200px;
+  transition: color 0.3s ease;
 }
 
 /* Messages */
@@ -444,6 +853,7 @@
   border: 1px solid #e5e7eb;
   font-weight: 400;
   line-height: 1.6;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 .user-message {
@@ -452,6 +862,7 @@
   align-self: flex-end;
   margin-left: auto;
   border: 1px solid #000000;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 .assistant-message {
@@ -459,6 +870,13 @@
   color: #374151;
   align-self: flex-start;
   border: 1px solid #e5e7eb;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.sidebar.dark-theme .assistant-message {
+  background: #1a1a1a;
+  color: #e5e5e5;
+  border: 1px solid #2a2a2a;
 }
 
 .message-content {
@@ -518,6 +936,7 @@
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
   font-size: 13px;
   color: #6366f1;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 .message-content pre {
@@ -530,6 +949,7 @@
   font-size: 13px;
   line-height: 1.5;
   border: 1px solid #e5e7eb;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .message-content blockquote {
@@ -557,8 +977,8 @@
 }
 
 .sidebar.dark-theme .typing-indicator {
-  background: #1f2937;
-  border-color: #374151;
+  background: #1a1a1a;
+  border-color: #2a2a2a;
 }
 
 .typing-dots {
@@ -600,6 +1020,12 @@
   padding: 24px 28px;
   border-top: 1px solid #f3f4f6;
   background: #ffffff;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.sidebar.dark-theme .sidebar-footer {
+  border-top: 1px solid #1a1a1a;
+  background: #0a0a0a;
 }
 
 /* Quick actions removed */
@@ -618,7 +1044,7 @@
   border-radius: 12px;
   padding: 12px 16px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
 }
 
 .expandable-trigger:hover {
@@ -684,6 +1110,7 @@
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .prompt-btn {
@@ -694,7 +1121,7 @@
   font-size: 14px;
   font-weight: 400;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
   color: #374151;
   text-align: left;
   display: flex;
@@ -737,24 +1164,68 @@
   margin: 0;
 }
 
-/* Close button at top right */
-.close-btn-top {
+/* Top buttons container */
+.sidebar-top-buttons {
   position: absolute;
   top: 16px;
   right: 16px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.sidebar-top-buttons button {
+  pointer-events: auto;
+}
+
+/* Dark mode toggle button */
+.dark-mode-toggle-btn {
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 8px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
   color: #6b7280;
-  z-index: 10;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dark-mode-toggle-btn svg {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.dark-mode-toggle-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  color: #f59e0b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dark-mode-toggle-btn svg {
+  stroke: currentColor;
+}
+
+/* Close button at top right */
+.close-btn-top {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: #6b7280;
   backdrop-filter: blur(10px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -803,16 +1274,18 @@
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
   overflow: hidden;
   width: 100%;
   box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .textarea-wrapper:focus-within {
-  border-color: #60E21B;
-  box-shadow: 0 0 0 3px rgba(96, 226, 27, 0.2);
+  box-shadow: 0 0 0 3px rgba(96, 226, 27, 0.1),
+              0 2px 8px rgba(0, 0, 0, 0.08);
 }
+
 
 #chat-input {
   flex: 1;
@@ -830,6 +1303,7 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
   width: 100%;
   box-sizing: border-box;
+  transition: color 0.3s ease;
 }
 
 #chat-input::placeholder {
@@ -849,7 +1323,7 @@
   cursor: pointer;
   font-size: 16px;
   font-weight: 500;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -885,8 +1359,8 @@
 
 /* Dark theme adjustments */
 .sidebar.dark-theme .textarea-wrapper {
-  background: #1f2937;
-  border-color: #374151;
+  background: #1a1a1a;
+  border-color: #2a2a2a;
 }
 
 .sidebar.dark-theme .textarea-wrapper:focus-within {
@@ -896,7 +1370,7 @@
 
 .sidebar.dark-theme #chat-input {
   background: transparent;
-  color: #f9fafb;
+  color: #e5e5e5;
 }
 
 .sidebar.dark-theme #chat-input::placeholder {
@@ -904,17 +1378,17 @@
 }
 
 .sidebar.dark-theme .send-btn-inside {
-  background: #000000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
 }
 
 .sidebar.dark-theme .send-btn-inside svg {
-  stroke: #ffffff;
+  stroke: #000000;
 }
 
 .sidebar.dark-theme .send-btn-inside:hover {
-  background: #1a1a1a;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: #e5e5e5;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
 }
 
 .sidebar.dark-theme .send-btn-inside:hover svg {
@@ -922,36 +1396,47 @@
 }
 
 .sidebar.dark-theme .footer-control-btn {
-  background: #1f2937;
-  border-color: #374151;
+  background: #1a1a1a;
+  border-color: #2a2a2a;
   color: #9ca3af;
 }
 
 .sidebar.dark-theme .footer-control-btn:hover {
-  background: #374151;
-  color: #f9fafb;
+  background: #252525;
+  color: #e5e5e5;
+}
+
+.sidebar.dark-theme .dark-mode-toggle-btn {
+  background: rgba(26, 26, 26, 0.95);
+  border-color: #2a2a2a;
+  color: #9ca3af;
+}
+
+.sidebar.dark-theme .dark-mode-toggle-btn:hover {
+  background: rgba(26, 26, 26, 1);
+  color: #fbbf24;
 }
 
 .sidebar.dark-theme .close-btn-top {
-  background: rgba(15, 15, 15, 0.9);
-  border-color: #374151;
+  background: rgba(26, 26, 26, 0.95);
+  border-color: #2a2a2a;
   color: #9ca3af;
 }
 
 .sidebar.dark-theme .close-btn-top:hover {
-  background: rgba(15, 15, 15, 1);
-  color: #f9fafb;
+  background: rgba(26, 26, 26, 1);
+  color: #e5e5e5;
 }
 
 /* Dark theme for expandable section */
 .sidebar.dark-theme .expandable-trigger {
-  background: #1f2937;
-  border-color: #374151;
+  background: #1a1a1a;
+  border-color: #2a2a2a;
 }
 
 .sidebar.dark-theme .expandable-trigger:hover {
-  background: #374151;
-  border-color: #4b5563;
+  background: #252525;
+  border-color: #3a3a3a;
 }
 
 .sidebar.dark-theme .expandable-text {
@@ -959,31 +1444,31 @@
 }
 
 .sidebar.dark-theme .expand-btn {
-  background: #374151;
-  border-color: #4b5563;
+  background: #252525;
+  border-color: #3a3a3a;
   color: #60E21B;
 }
 
 .sidebar.dark-theme .expand-btn:hover {
-  background: #1f2937;
+  background: #1a1a1a;
   border-color: #60E21B;
   box-shadow: 0 2px 8px rgba(96, 226, 27, 0.3);
 }
 
 .sidebar.dark-theme .suggested-prompts {
-  background: #1f2937;
-  border-color: #374151;
+  background: #0f0f0f;
+  border-color: #2a2a2a;
 }
 
 .sidebar.dark-theme .prompt-btn {
-  background: #374151;
-  border-color: #4b5563;
-  color: #f9fafb;
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+  color: #e5e5e5;
 }
 
 .sidebar.dark-theme .prompt-btn:hover {
-  background: #4b5563;
-  border-color: #6b7280;
+  background: #252525;
+  border-color: #3a3a3a;
 }
 
 .sidebar.dark-theme .lightbulb-icon {
@@ -1143,11 +1628,11 @@
 }
 
 .sidebar.dark-theme .chat-messages::-webkit-scrollbar-thumb {
-  background: #4b5563;
+  background: #3a3a3a;
 }
 
 .sidebar.dark-theme .chat-messages::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  background: #4a4a4a;
 }
 
 /* Indexing Progress */
@@ -1436,9 +1921,9 @@
 }
 
 .sidebar.dark-theme .loading-message {
-  background: #1f2937;
-  border-color: #374151;
-  color: #f9fafb;
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+  color: #e5e5e5;
 }
 
 .loading-spinner {
@@ -1451,7 +1936,7 @@
 }
 
 .sidebar.dark-theme .loading-spinner {
-  border-top-color: #000000;
+  border-top-color: #ffffff;
 }
 
 .loading-text {

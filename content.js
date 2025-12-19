@@ -25,22 +25,26 @@ class YouTubeVideoAssistant {
   }
 
   setupVideoDetection() {
+    // Create sidebar immediately when on YouTube
+    this.createSidebar();
+    
+    // Add header button
+    this.addHeaderButton();
+    
     // Detect when user navigates to a video page
     const observer = new MutationObserver(() => {
       const videoId = this.getCurrentVideoId();
-      
-      // Check if navigated away from video page
-      if (!videoId && this.currentVideoId && this.sidebar) {
-        console.log('Navigated away from video page, closing sidebar');
-        this.closeSidebarCompletely();
-        this.currentVideoId = null;
-        return;
-      }
       
       // Check if navigated to a new video
       if (videoId && videoId !== this.currentVideoId) {
         this.currentVideoId = videoId;
         this.onVideoChange();
+      } else if (!videoId && this.currentVideoId) {
+        // Navigated away from video page, but keep sidebar open
+        this.currentVideoId = null;
+        if (this.sidebar) {
+          this.sidebar.updateForNonVideoPage();
+        }
       }
     });
 
@@ -58,6 +62,11 @@ class YouTubeVideoAssistant {
 
   closeSidebarCompletely() {
     if (this.sidebar) {
+      // Remove class from body to restore YouTube layout
+      document.body.classList.remove('yt-assistant-active');
+      document.documentElement.classList.remove('yt-assistant-active');
+      this.removeLayoutStyles();
+      
       const sidebarElement = document.getElementById('youtube-video-assistant-sidebar');
       if (sidebarElement) {
         sidebarElement.remove();
@@ -79,6 +88,11 @@ class YouTubeVideoAssistant {
       const toggleBtn = document.getElementById('video-assistant-toggle');
       if (toggleBtn) {
         toggleBtn.remove();
+      }
+      
+      const headerBtn = document.getElementById('yt-assistant-header-btn');
+      if (headerBtn) {
+        headerBtn.remove();
       }
     }
   }
@@ -107,21 +121,69 @@ class YouTubeVideoAssistant {
   }
 
   createSidebar() {
+    // Check if sidebar already exists
+    if (document.getElementById('youtube-video-assistant-sidebar')) {
+      return;
+    }
+    
+    // Add class to body to squeeze YouTube content
+    document.body.classList.add('yt-assistant-active');
+    console.log('Added yt-assistant-active class to body');
+    console.log('Body classes:', document.body.className);
+    
+    // Also add to html element for better coverage
+    document.documentElement.classList.add('yt-assistant-active');
+    
+    // Force a reflow to ensure styles are applied
+    const app = document.querySelector('ytd-app');
+    if (app) {
+      app.style.maxWidth = 'calc(100vw - 425px)';
+      app.style.width = 'calc(100vw - 425px)';
+      console.log('Applied inline styles to ytd-app');
+    }
+    
+    const masthead = document.querySelector('#masthead-container');
+    if (masthead) {
+      masthead.style.maxWidth = 'calc(100vw - 425px)';
+      masthead.style.width = 'calc(100vw - 425px)';
+      console.log('Applied inline styles to masthead');
+    }
+    
+    document.body.offsetHeight;
+    
     // Create sidebar container
     const sidebarContainer = document.createElement('div');
     sidebarContainer.id = 'youtube-video-assistant-sidebar';
     sidebarContainer.innerHTML = `
-      <button class="close-btn-top" title="Close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
+      <div class="sidebar-top-buttons">
+        <button class="dark-mode-toggle-btn" title="Toggle Dark Mode">
+          <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+        <button class="close-btn-top" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
       <div class="sidebar-body">
         <div class="chat-messages" id="chat-messages">
           <div class="welcome-message">
-            <p>Hi! I can help you understand this video better.</p>
-            <p>Ask me questions, get summaries, or search for specific topics!</p>
+            <p>👋 Hi! I'm your YouTube Assistant.</p>
+            <p>Ask me anything! Navigate to a video for video-specific questions, or chat with me anytime.</p>
           </div>
         </div>
       </div>
@@ -297,6 +359,88 @@ class YouTubeVideoAssistant {
     setTimeout(() => clearInterval(checkControls), 10000);
   }
 
+  addHeaderButton() {
+    // Remove existing button if any
+    const existingBtn = document.getElementById('yt-assistant-header-btn');
+    if (existingBtn) {
+      existingBtn.remove();
+    }
+
+    // Wait for search container to be ready
+    const checkHeader = setInterval(() => {
+      // Look for the search container - try multiple selectors
+      let targetContainer = null;
+      
+      // Try to find the voice search button container
+      const voiceSearchBtn = document.querySelector('#voice-search-button') ||
+                            document.querySelector('ytd-masthead #voice-search-button');
+      
+      if (voiceSearchBtn) {
+        targetContainer = voiceSearchBtn.parentElement;
+        console.log('Found voice search button container');
+      } else {
+        // Fallback: look for search box
+        const searchBox = document.querySelector('#search') || 
+                         document.querySelector('ytd-searchbox');
+        if (searchBox) {
+          targetContainer = searchBox;
+          console.log('Found search box as fallback');
+        }
+      }
+      
+      if (targetContainer) {
+        clearInterval(checkHeader);
+        console.log('Adding Twelve Labs button to header');
+        
+        // Create button
+        const button = document.createElement('button');
+        button.id = 'yt-assistant-header-btn';
+        button.className = 'yt-assistant-header-button';
+        button.title = 'Ask AI Assistant';
+        button.setAttribute('aria-label', 'Ask AI Assistant');
+        
+        // Add "Ask" text and logo
+        const iconUrl = chrome.runtime.getURL('icons/logo_control.png');
+        button.innerHTML = `
+          <span class="yt-assistant-header-text">Ask</span>
+          <div class="yt-assistant-header-icon">
+            <img src="${iconUrl}" alt="AI" />
+          </div>
+        `;
+        
+        // Add click handler
+        button.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Header Twelve Labs button clicked!');
+          this.toggleSidebar();
+        });
+        
+        // Set initial state based on sidebar
+        if (this.isSidebarOpen) {
+          button.classList.add('active');
+        }
+        
+        // Insert after the target container
+        if (voiceSearchBtn) {
+          // Insert right after voice search button
+          voiceSearchBtn.parentElement.insertBefore(button, voiceSearchBtn.nextSibling);
+        } else {
+          // Insert after search box
+          targetContainer.parentElement.insertBefore(button, targetContainer.nextSibling);
+        }
+        
+        console.log('Twelve Labs button added to header at position:', button.getBoundingClientRect());
+      }
+    }, 500);
+    
+    // Clear interval after 10 seconds if not found
+    setTimeout(() => {
+      clearInterval(checkHeader);
+      console.log('Stopped looking for search container');
+    }, 10000);
+  }
+
   addMenuButton() {
     // Remove existing button if any
     const existingBtn = document.getElementById('yt-assistant-menu-btn');
@@ -390,14 +534,29 @@ class YouTubeVideoAssistant {
       this.isSidebarOpen = !this.isSidebarOpen;
       if (this.isSidebarOpen) {
         sidebar.classList.remove('collapsed');
+        document.body.classList.add('yt-assistant-active');
+        document.documentElement.classList.add('yt-assistant-active');
+        this.applyLayoutStyles();
       } else {
         sidebar.classList.add('collapsed');
+        document.body.classList.remove('yt-assistant-active');
+        document.documentElement.classList.remove('yt-assistant-active');
+        this.removeLayoutStyles();
       }
       
-      // Update player button opacity
+      // Update button states
       const playerBtn = document.getElementById('yt-assistant-player-btn');
       if (playerBtn) {
         playerBtn.style.opacity = this.isSidebarOpen ? '1' : '0.7';
+      }
+      
+      const headerBtn = document.getElementById('yt-assistant-header-btn');
+      if (headerBtn) {
+        if (this.isSidebarOpen) {
+          headerBtn.classList.add('active');
+        } else {
+          headerBtn.classList.remove('active');
+        }
       }
       
       console.log('Sidebar toggled, open:', this.isSidebarOpen);
@@ -407,11 +566,56 @@ class YouTubeVideoAssistant {
       this.createSidebar();
       this.isSidebarOpen = true;
       
-      // Update player button opacity
+      // Update button states
       const playerBtn = document.getElementById('yt-assistant-player-btn');
       if (playerBtn) {
         playerBtn.style.opacity = '1';
       }
+      
+      const headerBtn = document.getElementById('yt-assistant-header-btn');
+      if (headerBtn) {
+        headerBtn.classList.add('active');
+      }
+    }
+  }
+
+  applyLayoutStyles() {
+    const app = document.querySelector('ytd-app');
+    if (app) {
+      app.style.maxWidth = 'calc(100vw - 425px)';
+      app.style.width = 'calc(100vw - 425px)';
+    }
+    
+    const masthead = document.querySelector('#masthead-container');
+    if (masthead) {
+      masthead.style.maxWidth = 'calc(100vw - 425px)';
+      masthead.style.width = 'calc(100vw - 425px)';
+    }
+    
+    const pageManager = document.querySelector('#page-manager');
+    if (pageManager) {
+      pageManager.style.maxWidth = 'calc(100vw - 425px)';
+      pageManager.style.width = 'calc(100vw - 425px)';
+    }
+  }
+
+  removeLayoutStyles() {
+    const app = document.querySelector('ytd-app');
+    if (app) {
+      app.style.maxWidth = '';
+      app.style.width = '';
+    }
+    
+    const masthead = document.querySelector('#masthead-container');
+    if (masthead) {
+      masthead.style.maxWidth = '';
+      masthead.style.width = '';
+    }
+    
+    const pageManager = document.querySelector('#page-manager');
+    if (pageManager) {
+      pageManager.style.maxWidth = '';
+      pageManager.style.width = '';
     }
   }
 
@@ -464,8 +668,13 @@ class SidebarManager {
     this.setupEventListeners();
     this.loadSettings();
     
-    // Automatically start indexing the video
-    this.autoIndexVideo();
+    // Only auto-index if we have a video ID
+    if (this.videoId) {
+      this.autoIndexVideo();
+    } else {
+      // Keep input enabled for general chat
+      this.updateForNonVideoPage();
+    }
   }
 
   setupEventListeners() {
@@ -488,6 +697,11 @@ class SidebarManager {
     });
 
     // Note: Quick action buttons removed
+
+    // Dark mode toggle button
+    this.container.querySelector('.dark-mode-toggle-btn').addEventListener('click', () => {
+      this.toggleTheme();
+    });
 
     // Close button
     this.container.querySelector('.close-btn-top').addEventListener('click', () => {
@@ -548,6 +762,20 @@ class SidebarManager {
 
   applyTheme() {
     this.container.className = `sidebar ${this.theme}-theme`;
+    
+    // Update icon visibility
+    const sunIcon = this.container.querySelector('.sun-icon');
+    const moonIcon = this.container.querySelector('.moon-icon');
+    
+    if (sunIcon && moonIcon) {
+      if (this.theme === 'dark') {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+      } else {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+      }
+    }
   }
 
   toggleTheme() {
@@ -574,7 +802,11 @@ class SidebarManager {
     this.chatInput.style.height = 'auto';
     
     // Show initial loading message
-    this.showLoadingMessage('Starting video analysis...');
+    if (this.videoId) {
+      this.showLoadingMessage('Starting video analysis...');
+    } else {
+      this.showLoadingMessage('Processing your question...');
+    }
 
     // Create a streaming message ID for this request
     this.currentStreamingMessageId = `streaming-${Date.now()}`;
@@ -605,8 +837,10 @@ class SidebarManager {
           messageContent.innerHTML = this.formatMessageContent(rawText);
         }
         
-        // Apply timestamp click handlers
-        this.attachTimestampHandlers(streamingMsg);
+        // Apply timestamp click handlers (only if on video page)
+        if (this.videoId) {
+          this.attachTimestampHandlers(streamingMsg);
+        }
         
         streamingMsg.classList.remove('streaming');
         streamingMsg.classList.add('assistant-message');
@@ -627,7 +861,8 @@ class SidebarManager {
         streamingMsg.remove();
       }
       
-      // Log error to console only, don't show in UI
+      // Show user-friendly error message
+      this.addMessage('assistant', 'Sorry, I encountered an error processing your question. Please try again or navigate to a video for video-specific questions.');
       console.error('Error processing message:', error);
       this.currentStreamingMessageId = null;
       this.isStreaming = false;
@@ -670,6 +905,13 @@ class SidebarManager {
   }
 
   async processMessage(message) {
+    // Check if we're on a video page
+    if (!this.videoId) {
+      // Not on a video page - provide general assistance
+      this.updateLoadingMessage('Processing your question...');
+      return 'I\'m here to help! For video-specific questions like summaries, chapters, or highlights, please navigate to a YouTube video first. You can ask me general questions anytime, or use the suggested prompts when you\'re on a video page.';
+    }
+    
     // Video should already be indexed by autoIndexVideo
     // Process the message based on content
     if (message.toLowerCase().includes('summarize') || message.toLowerCase().includes('summary')) {
@@ -714,7 +956,6 @@ class SidebarManager {
         console.log('Video already indexed, ID:', existingVideoId);
         this.videoIndexed = true;
         this.hideLoadingMessage();
-        this.addMessage('assistant', '✅ Video is already indexed and ready! You can ask questions, get summaries, or search for specific content.');
         this.enableInput();
         return;
       }
@@ -751,7 +992,7 @@ class SidebarManager {
 
   enableInput() {
     this.chatInput.disabled = false;
-    this.chatInput.placeholder = 'Ask about this video...';
+    this.chatInput.placeholder = this.videoId ? 'Ask about this video...' : 'Ask any question...';
     this.sendBtn.disabled = false;
     this.chatInput.style.opacity = '1';
     this.sendBtn.style.opacity = '1';
@@ -1287,6 +1528,9 @@ class SidebarManager {
     // Notify parent that sidebar is closing
     window.dispatchEvent(new CustomEvent('yt-assistant-sidebar-closed'));
     
+    // Remove class from body to restore YouTube layout
+    document.body.classList.remove('yt-assistant-active');
+    
     this.container.remove();
     const toggleBtn = document.getElementById('video-assistant-toggle');
     if (toggleBtn) {
@@ -1359,6 +1603,26 @@ class SidebarManager {
     
     // Restart auto-indexing for the new video
     this.autoIndexVideo();
+  }
+
+  updateForNonVideoPage() {
+    // Clear chat messages
+    this.chatMessages.innerHTML = '';
+    
+    // Show welcome message for non-video pages
+    const welcomeDiv = document.createElement('div');
+    welcomeDiv.className = 'welcome-message';
+    welcomeDiv.innerHTML = `
+      <p>👋 Welcome to YouTube Video Assistant!</p>
+      <p>Ask me anything! Navigate to a video for video-specific questions, or ask general questions anytime.</p>
+    `;
+    this.chatMessages.appendChild(welcomeDiv);
+    
+    // Keep input enabled - chat is always available
+    this.enableInput();
+    this.chatInput.placeholder = 'Ask any question...';
+    this.videoId = null;
+    this.videoIndexed = false;
   }
 
   handleStreamingUpdate(type, data) {
