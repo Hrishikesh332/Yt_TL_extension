@@ -943,6 +943,11 @@ class SidebarManager {
     const container = document.createElement('div');
     container.className = 'video-cards-container';
     
+    const instructionText = document.createElement('div');
+    instructionText.className = 'video-cards-instruction';
+    instructionText.textContent = 'Click on the video to chat with';
+    container.appendChild(instructionText);
+    
     videos.forEach((video, index) => {
       const card = document.createElement('a');
       card.href = video.url;
@@ -956,17 +961,19 @@ class SidebarManager {
         window.location.href = video.url;
       });
       
+      const thumbnailUrl = video.thumbnail || video.Thumbnail || video.thumbnailUrl || '';
+      
       card.innerHTML = `
-        <div class="video-card-number">${index + 1}</div>
+        <div class="video-card-thumbnail">
+          ${thumbnailUrl ? `<img src="${thumbnailUrl}" alt="${video.title || 'Video thumbnail'}" loading="lazy" />` : '<div class="video-card-thumbnail-placeholder">No Image</div>'}
+          ${video.duration && video.duration !== 'Unknown' ? `<div class="video-card-duration-overlay">${video.duration}</div>` : ''}
+        </div>
         <div class="video-card-content">
           <div class="video-card-title">${video.title || 'Untitled Video'}</div>
-          <div class="video-card-url">${video.url}</div>
           <div class="video-card-meta">
-            ${video.duration && video.duration !== 'Unknown' ? `<span class="video-card-duration"><span class="video-card-label">Duration:</span> ${video.duration}</span>` : ''}
-            ${video.channelName ? `<span class="video-card-channel"><span class="video-card-label">Channel:</span> ${video.channelName}</span>` : ''}
+            ${video.channelName ? `<span class="video-card-channel">${video.channelName}</span>` : ''}
           </div>
         </div>
-        <div class="video-card-arrow">→</div>
       `;
       
       container.appendChild(card);

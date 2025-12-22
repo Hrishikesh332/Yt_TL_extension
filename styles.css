@@ -2055,66 +2055,89 @@ body:not(.yt-assistant-active) #primary {
   width: 100%;
 }
 
+.video-cards-instruction {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+  margin-bottom: 4px;
+  padding: 0 4px;
+  text-align: center;
+}
+
 .video-card {
   display: flex;
-  align-items: flex-start;
-  gap: 20px;
-  padding: 24px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border: 2px solid #e5e7eb;
-  border-radius: 20px;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
   text-decoration: none;
   color: inherit;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.video-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(59, 130, 246, 0.01) 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-height: 68px;
 }
 
 .video-card:hover {
-  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
-  border-color: #3b82f6;
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.2),
-              0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #10b981;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2),
+              0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.video-card:hover::before {
-  opacity: 1;
-}
-
-.video-card-number {
+.video-card-thumbnail {
+  width: 120px;
+  height: 68px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
-  color: #ffffff;
-  border-radius: 14px;
-  font-weight: 700;
-  font-size: 20px;
-  flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 8px 0 0 8px;
 }
 
-.video-card:hover .video-card-number {
-  transform: scale(1.15) rotate(5deg);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+.video-card-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  display: block;
+}
+
+.video-card-thumbnail-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 12px;
+  background: #1a1a1a;
+}
+
+.video-card-duration-overlay {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: Roboto, Arial, sans-serif;
+  line-height: 1.4;
+  backdrop-filter: blur(4px);
+}
+
+.video-card:hover .video-card-thumbnail img {
+  transform: scale(1.05);
 }
 
 .video-card-content {
@@ -2122,14 +2145,16 @@ body:not(.yt-assistant-active) #primary {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+  padding: 12px 16px;
+  justify-content: center;
 }
 
 .video-card-title {
-  font-weight: 700;
-  font-size: 18px;
+  font-weight: 600;
+  font-size: 14px;
   color: #111827;
-  line-height: 1.4;
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -2140,74 +2165,37 @@ body:not(.yt-assistant-active) #primary {
 }
 
 .video-card:hover .video-card-title {
-  color: #3b82f6;
-}
-
-.video-card-url {
-  font-size: 13px;
-  color: #6366f1;
-  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-  word-break: break-all;
-  opacity: 0.8;
-  transition: opacity 0.2s ease, color 0.2s ease;
-}
-
-.video-card:hover .video-card-url {
-  opacity: 1;
-  color: #4f46e5;
+  color: #10b981;
 }
 
 .video-card-meta {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  font-size: 14px;
-  color: #4b5563;
-  margin-top: 4px;
+  gap: 3px;
+  font-size: 12px;
+  color: #6b7280;
 }
 
 .video-card-channel,
 .video-card-duration {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
-.video-card-label {
-  font-weight: 600;
-  color: #6b7280;
-  min-width: 70px;
-}
-
-.video-card-arrow {
-  font-size: 28px;
-  font-weight: 300;
-  color: #9ca3af;
-  flex-shrink: 0;
-  transition: all 0.3s ease;
-  opacity: 0.5;
-  margin-top: 4px;
-}
-
-.video-card:hover .video-card-arrow {
-  color: #3b82f6;
-  transform: translateX(6px);
-  opacity: 1;
-}
 
 /* Dark theme for video cards */
 .sidebar.dark-theme .video-card {
-  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  background: #1a1a1a;
   border-color: #2a2a2a;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .sidebar.dark-theme .video-card:hover {
-  background: linear-gradient(135deg, #252525 0%, #1a1a1a 100%);
-  border-color: #3b82f6;
-  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.25),
-              0 4px 12px rgba(0, 0, 0, 0.5);
+  background: #252525;
+  border-color: #10b981;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25),
+              0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .sidebar.dark-theme .video-card-title {
@@ -2215,38 +2203,15 @@ body:not(.yt-assistant-active) #primary {
 }
 
 .sidebar.dark-theme .video-card:hover .video-card-title {
-  color: #60a5fa;
-}
-
-.sidebar.dark-theme .video-card-url {
-  color: #818cf8;
-  opacity: 0.9;
-}
-
-.sidebar.dark-theme .video-card:hover .video-card-url {
-  color: #a5b4fc;
-  opacity: 1;
+  color: #34d399;
 }
 
 .sidebar.dark-theme .video-card-meta {
   color: #9ca3af;
 }
 
-.sidebar.dark-theme .video-card-label {
-  color: #6b7280;
-}
-
-.sidebar.dark-theme .video-card-number {
-  background: linear-gradient(135deg, #ffffff 0%, #e5e5e5 100%);
-  color: #000000;
-}
-
-.sidebar.dark-theme .video-card-arrow {
-  color: #6b7280;
-}
-
-.sidebar.dark-theme .video-card:hover .video-card-arrow {
-  color: #60a5fa;
+.sidebar.dark-theme .video-cards-instruction {
+  color: #9ca3af;
 }
 
 /* Responsive design for processing flow */
