@@ -45,6 +45,12 @@ class YouTubeVideoAssistant {
         if (this.sidebar) {
           this.sidebar.updateForNonVideoPage();
         }
+      } else if (!videoId && !this.currentVideoId && this.sidebar && this.sidebar.videoId) {
+        // Initial load or navigated to home page when sidebar exists
+        if (this.sidebar) {
+          this.sidebar.videoId = null;
+          this.sidebar.updateForNonVideoPage();
+        }
       }
     });
 
@@ -183,7 +189,8 @@ class YouTubeVideoAssistant {
         <div class="chat-messages" id="chat-messages">
           <div class="welcome-message">
             <p>👋 Hi! I'm your YouTube Assistant.</p>
-            <p>I can help you find videos, index them, and analyze content. Ask me anything!</p>
+            <p>I can help you find videos, index them for analysis, and answer questions about videos.</p>
+            <p><strong>Try asking:</strong> "Find videos about machine learning" or "Search for Python tutorials"</p>
           </div>
         </div>
       </div>
@@ -200,56 +207,7 @@ class YouTubeVideoAssistant {
             </button>
           </div>
           <div class="expandable-content" id="expandable-content">
-            <div class="suggested-prompts">
-              <button class="prompt-btn" data-prompt="Generate hashtags and topics">
-                <svg class="lightbulb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1z"></path>
-                  <path d="M12 2C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"></path>
-                </svg>
-                <span>Generate hashtags and topics</span>
-              </button>
-              <button class="prompt-btn" data-prompt="Summarize this video">
-                <svg class="lightbulb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1z"></path>
-                  <path d="M12 2C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"></path>
-                </svg>
-                <span>Summarize this video</span>
-              </button>
-              <button class="prompt-btn" data-prompt="What are highlighted moments of this video?">
-                <svg class="lightbulb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1z"></path>
-                  <path d="M12 2C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"></path>
-                </svg>
-                <span>What are highlighted moments of this video?</span>
-              </button>
-              <button class="prompt-btn" data-prompt="Chapterize this video">
-                <svg class="lightbulb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1z"></path>
-                  <path d="M12 2C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"></path>
-                </svg>
-                <span>Chapterize this video</span>
-              </button>
-              <button class="prompt-btn" data-prompt="Classify this video based on Youtube categories. Output as JSON format.">
-                <svg class="lightbulb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1z"></path>
-                  <path d="M12 2C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"></path>
-                </svg>
-                <span>Classify this video based on Youtube categories. Output as JSON format.</span>
-              </button>
-              <button class="prompt-btn" data-prompt="Which audience is the video suitable for, and why?">
-                <svg class="lightbulb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1z"></path>
-                  <path d="M12 2C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"></path>
-                </svg>
-                <span>Which audience is the video suitable for, and why?</span>
-              </button>
-              <button class="prompt-btn" data-prompt="Break down the video by main event and timestamp">
-                <svg class="lightbulb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1z"></path>
-                  <path d="M12 2C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"></path>
-                </svg>
-                <span>Break down the video by main event and timestamp</span>
-              </button>
+            <div class="suggested-prompts" id="suggested-prompts">
             </div>
           </div>
         </div>
@@ -728,15 +686,67 @@ class SidebarManager {
       this.toggleExpandableSection();
     });
 
-    // Prompt buttons
-    const promptBtns = this.container.querySelectorAll('.prompt-btn');
-    promptBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const prompt = btn.dataset.prompt;
-        this.chatInput.value = prompt;
-        this.sendMessage();
+    // Prompt buttons - use event delegation since prompts are added dynamically
+    const promptContainer = this.container.querySelector('#suggested-prompts');
+    if (promptContainer) {
+      promptContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.prompt-btn');
+        if (btn) {
+          const prompt = btn.dataset.prompt;
+          this.chatInput.value = prompt;
+          this.sendMessage();
+        }
       });
-    });
+    }
+    
+    // Initialize prompts
+    this.updateSuggestedPrompts();
+  }
+
+  updateSuggestedPrompts() {
+    const promptContainer = this.container.querySelector('#suggested-prompts');
+    if (!promptContainer) return;
+
+    const expandableText = this.container.querySelector('.expandable-text');
+    if (expandableText) {
+      expandableText.textContent = this.videoId 
+        ? 'Try our suggested prompts with your selected video'
+        : 'Try our suggested prompts';
+    }
+
+    const videoPrompts = [
+      { prompt: 'Generate hashtags and topics', label: 'Generate hashtags and topics' },
+      { prompt: 'Summarize this video', label: 'Summarize this video' },
+      { prompt: 'What are highlighted moments of this video?', label: 'What are highlighted moments of this video?' },
+      { prompt: 'Chapterize this video', label: 'Chapterize this video' },
+      { prompt: 'Classify this video based on Youtube categories. Output as JSON format.', label: 'Classify this video based on Youtube categories. Output as JSON format.' },
+      { prompt: 'Which audience is the video suitable for, and why?', label: 'Which audience is the video suitable for, and why?' },
+      { prompt: 'Break down the video by main event and timestamp', label: 'Break down the video by main event and timestamp' }
+    ];
+
+    const mainPagePrompts = [
+      { prompt: 'Get 2 videos about cooking recipes', label: 'Get 2 videos about cooking recipes' },
+      { prompt: 'Find 3 videos about travel destinations', label: 'Find 3 videos about travel destinations' },
+      { prompt: 'Get 2 videos about fitness workouts', label: 'Get 2 videos about fitness workouts' },
+      { prompt: 'Find videos about photography tips', label: 'Find videos about photography tips' },
+      { prompt: 'Get 2 videos about music production', label: 'Get 2 videos about music production' },
+      { prompt: 'Find videos about business strategies', label: 'Find videos about business strategies' },
+      { prompt: 'Get 3 videos about science experiments', label: 'Get 3 videos about science experiments' }
+    ];
+
+    const prompts = this.videoId ? videoPrompts : mainPagePrompts;
+
+    const svgIcon = `<svg class="lightbulb-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1z"></path>
+      <path d="M12 2C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"></path>
+    </svg>`;
+
+    promptContainer.innerHTML = prompts.map(p => `
+      <button class="prompt-btn" data-prompt="${p.prompt}">
+        ${svgIcon}
+        <span>${p.label}</span>
+      </button>
+    `).join('');
   }
 
   toggleExpandableSection() {
@@ -1820,6 +1830,9 @@ class SidebarManager {
     // Clear chat messages
     this.chatMessages.innerHTML = '';
     
+    // Update suggested prompts for video page
+    this.updateSuggestedPrompts();
+    
     // Restart auto-indexing for the new video
     this.autoIndexVideo();
   }
@@ -1832,16 +1845,13 @@ class SidebarManager {
     const welcomeDiv = document.createElement('div');
     welcomeDiv.className = 'welcome-message';
     welcomeDiv.innerHTML = `
-      <p>👋 Welcome to YouTube Video Assistant!</p>
-      <p>I can help you:</p>
-      <ul style="text-align: left; margin: 12px 0;">
-        <li>Find videos on YouTube</li>
-        <li>Index videos for analysis</li>
-        <li>Answer questions about videos</li>
-      </ul>
-      <p>Try asking: "find videos about machine learning" or "find and index videos about AI"</p>
+      <p>👋 Hi! I'm your YouTube Assistant.</p>
+      <p>I can help you find videos, index them for analysis, and answer questions about videos.</p>
     `;
     this.chatMessages.appendChild(welcomeDiv);
+    
+    // Update suggested prompts for main page
+    this.updateSuggestedPrompts();
     
     // Keep input enabled - chat is always available
     this.enableInput();
