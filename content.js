@@ -183,7 +183,7 @@ class YouTubeVideoAssistant {
         <div class="chat-messages" id="chat-messages">
           <div class="welcome-message">
             <p>👋 Hi! I'm your YouTube Assistant.</p>
-            <p>Ask me anything! Navigate to a video for video-specific questions, or chat with me anytime.</p>
+            <p>I can help you find videos, index them, and analyze content. Ask me anything!</p>
           </div>
         </div>
       </div>
@@ -624,18 +624,26 @@ class YouTubeVideoAssistant {
       if (request.action === 'toggleSidebar') {
         this.toggleSidebar();
       } else if (request.action === 'streamingChunk') {
-        this.handleStreamingChunk(request.chunk, request.fullText);
+        this.handleStreamingChunk(request.chunk, request.fullText, request.found_videos);
       } else if (request.action === 'streamingUpdate') {
         this.handleStreamingUpdate(request.type, request.data);
       } else if (request.action === 'processingStatusUpdate') {
         this.handleProcessingStatusUpdate(request.step, request.description);
+      } else if (request.action === 'agenticChatStatus') {
+        this.handleAgenticChatStatus(request.message);
       }
     });
   }
 
-  handleStreamingChunk(chunk, fullText) {
+  handleAgenticChatStatus(message) {
     if (this.sidebar) {
-      this.sidebar.updateStreamingResponse(chunk, fullText);
+      this.sidebar.updateLoadingMessage(message);
+    }
+  }
+
+  handleStreamingChunk(chunk, fullText, foundVideos) {
+    if (this.sidebar) {
+      this.sidebar.updateStreamingResponse(chunk, fullText, foundVideos);
     }
   }
 
@@ -818,9 +826,26 @@ class SidebarManager {
       // Hide loader
       this.hideLoadingMessage();
       
-      // If streaming message exists, finalize it
+      // Check if response is null (already handled by agenticChat)
+      if (response === null) {
+        // Already finalized by agenticChat, just clean up
+        this.currentStreamingMessageId = null;
+        this.isStreaming = false;
+        return; // Don't process again
+      }
+      
+      // Check if this was a streaming response that's already been finalized
       const streamingMsg = document.getElementById(this.currentStreamingMessageId);
       if (streamingMsg && this.isStreaming) {
+        // Check if message was already finalized (has found_videos means it was handled by agenticChat)
+        if (response && response.found_videos) {
+          // Already finalized by agenticChat, just clean up
+          this.currentStreamingMessageId = null;
+          this.isStreaming = false;
+          return; // Don't process again
+        }
+        
+        // For video page streaming, finalize it here
         // Get the raw text content
         const textContainer = streamingMsg.querySelector('.streaming-text');
         const rawText = textContainer ? textContainer.textContent : '';
@@ -844,9 +869,15 @@ class SidebarManager {
         
         streamingMsg.classList.remove('streaming');
         streamingMsg.classList.add('assistant-message');
-      } else if (!streamingMsg) {
-        // No streaming occurred, show the response normally
-      this.addMessage('assistant', response);
+      } else if (!streamingMsg && response) {
+        // No streaming occurred, show the response normally (only if response exists)
+        // Format response for better display
+        const formattedResponse = typeof response === 'string' ? response : 
+                                 (response && response.result && response.result !== null && response.result !== 'null' ? response.result : null) ||
+                                 (response && response.response && response.response !== null && response.response !== 'null' ? response.response : null);
+        if (formattedResponse && formattedResponse !== null && formattedResponse !== 'null' && formattedResponse !== undefined) {
+          this.addMessage('assistant', formattedResponse);
+        }
       }
       
       this.currentStreamingMessageId = null;
@@ -869,7 +900,7 @@ class SidebarManager {
     }
   }
 
-  updateStreamingResponse(chunk, fullText) {
+  updateStreamingResponse(chunk, fullText, foundVideos) {
     // Hide loading message when first chunk arrives
     this.hideLoadingMessage();
     
@@ -896,20 +927,60 @@ class SidebarManager {
     // Update the text content with the accumulated text (plain text during streaming)
     const textContainer = streamingMsg.querySelector('.streaming-text');
     if (textContainer) {
+      // Only update if this is during streaming (not final)
       // Store as plain text during streaming
       textContainer.textContent = fullText;
     }
+    
+    // Don't add video cards during streaming - wait for final response
+    // Cards will be added in the finalization step
     
     // Auto-scroll to show new content
     this.scrollToBottom();
   }
 
+  createVideoCards(videos) {
+    const container = document.createElement('div');
+    container.className = 'video-cards-container';
+    
+    videos.forEach((video, index) => {
+      const card = document.createElement('a');
+      card.href = video.url;
+      // Open in same tab (remove target="_blank")
+      card.className = 'video-card';
+      card.title = video.title || 'Watch video';
+      
+      // Add click handler to navigate in same tab
+      card.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = video.url;
+      });
+      
+      card.innerHTML = `
+        <div class="video-card-number">${index + 1}</div>
+        <div class="video-card-content">
+          <div class="video-card-title">${video.title || 'Untitled Video'}</div>
+          <div class="video-card-url">${video.url}</div>
+          <div class="video-card-meta">
+            ${video.duration && video.duration !== 'Unknown' ? `<span class="video-card-duration"><span class="video-card-label">Duration:</span> ${video.duration}</span>` : ''}
+            ${video.channelName ? `<span class="video-card-channel"><span class="video-card-label">Channel:</span> ${video.channelName}</span>` : ''}
+          </div>
+        </div>
+        <div class="video-card-arrow">→</div>
+      `;
+      
+      container.appendChild(card);
+    });
+    
+    return container;
+  }
+
   async processMessage(message) {
     // Check if we're on a video page
     if (!this.videoId) {
-      // Not on a video page - provide general assistance
-      this.updateLoadingMessage('Processing your question...');
-      return 'I\'m here to help! For video-specific questions like summaries, chapters, or highlights, please navigate to a YouTube video first. You can ask me general questions anytime, or use the suggested prompts when you\'re on a video page.';
+      // Not on a video page - use agentic chat API
+      this.updateLoadingMessage('Processing your request...');
+      return await this.agenticChat(message);
     }
     
     // Video should already be indexed by autoIndexVideo
@@ -927,6 +998,130 @@ class SidebarManager {
       // General search/query
       this.updateLoadingMessage('Preparing to search video content...');
       return await this.searchVideo(message);
+    }
+  }
+
+  async agenticChat(query) {
+    try {
+      // Remove welcome message if it exists
+      const welcomeMessage = this.chatMessages.querySelector('.welcome-message');
+      if (welcomeMessage) {
+        welcomeMessage.remove();
+      }
+
+      // Create a streaming message ID for this request
+      this.currentStreamingMessageId = `streaming-${Date.now()}`;
+      this.isStreaming = true;
+
+      // Get conversation context if available
+      const conversationContext = {
+        auto_index: true
+      };
+      
+      // Use streaming endpoint for real-time updates
+      const response = await chrome.runtime.sendMessage({
+        action: 'agenticChatStream',
+        query: query,
+        conversationContext: conversationContext
+      });
+      
+      // Hide loader
+      this.hideLoadingMessage();
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      // If streaming message exists, finalize it
+      const streamingMsg = document.getElementById(this.currentStreamingMessageId);
+      if (streamingMsg && this.isStreaming) {
+        // Get the raw text content
+        const textContainer = streamingMsg.querySelector('.streaming-text');
+        const rawText = textContainer ? textContainer.textContent : '';
+        
+        // Remove cursor
+        const cursor = streamingMsg.querySelector('.streaming-cursor');
+        if (cursor) {
+          cursor.remove();
+        }
+        
+        // Format the content with markdown
+        const messageContent = streamingMsg.querySelector('.message-content');
+        if (messageContent) {
+          // Clear existing content (removes streaming text and cursor)
+          messageContent.innerHTML = '';
+          
+          // If videos are found, only show cards (no text)
+          if (response.found_videos && response.found_videos.length > 0) {
+            const cardsContainer = this.createVideoCards(response.found_videos);
+            messageContent.appendChild(cardsContainer);
+          } else {
+            // Only show text if no videos found
+            if (rawText && rawText.trim()) {
+              const textDiv = document.createElement('div');
+              textDiv.innerHTML = this.formatMessageContent(rawText);
+              messageContent.appendChild(textDiv);
+            }
+          }
+        }
+        
+        streamingMsg.classList.remove('streaming');
+        streamingMsg.classList.add('assistant-message');
+      } else if (!streamingMsg && response) {
+        // No streaming occurred, show the response normally (only if response exists and is not null)
+        const formattedResponse = typeof response === 'string' ? response : 
+                                 (response.result && typeof response.result === 'string' ? response.result : null) ||
+                                 (response.response && typeof response.response === 'string' ? response.response : null);
+        
+        // If videos are found, only show cards (no text)
+        if (response.found_videos && response.found_videos.length > 0) {
+          const messageDiv = document.createElement('div');
+          messageDiv.className = 'message assistant-message';
+          const messageContent = document.createElement('div');
+          messageContent.className = 'message-content';
+          
+          const cardsContainer = this.createVideoCards(response.found_videos);
+          messageContent.appendChild(cardsContainer);
+          
+          messageDiv.appendChild(messageContent);
+          this.chatMessages.appendChild(messageDiv);
+          this.scrollToBottom();
+        } else if (formattedResponse && formattedResponse !== 'null') {
+          // Only show text if no videos found
+          const messageDiv = document.createElement('div');
+          messageDiv.className = 'message assistant-message';
+          const messageContent = document.createElement('div');
+          messageContent.className = 'message-content';
+          
+          messageContent.innerHTML = this.formatMessageContent(formattedResponse);
+          
+          messageDiv.appendChild(messageContent);
+          this.chatMessages.appendChild(messageDiv);
+          this.scrollToBottom();
+        }
+      }
+      
+      this.currentStreamingMessageId = null;
+      this.isStreaming = false;
+      
+      // Return null to prevent sendMessage from processing again
+      // The streaming message has already been finalized above
+      return null;
+    } catch (error) {
+      // Hide loader before showing error
+      this.hideLoadingMessage();
+      
+      // Remove streaming message if exists
+      const streamingMsg = document.getElementById(this.currentStreamingMessageId);
+      if (streamingMsg) {
+        streamingMsg.remove();
+      }
+      
+      console.error('Agentic chat error:', error);
+      this.addMessage('assistant', `Sorry, I encountered an error: ${error.message}. Please try again.`);
+      this.currentStreamingMessageId = null;
+      this.isStreaming = false;
+      throw error;
     }
   }
 
@@ -1330,6 +1525,11 @@ class SidebarManager {
   }
 
   addMessage(sender, content) {
+    // Don't add message if content is null, undefined, or empty
+    if (!content || content === 'null' || content === null || content === undefined) {
+      return;
+    }
+    
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}-message`;
     
@@ -1374,8 +1574,16 @@ class SidebarManager {
   }
 
   formatMessageContent(content) {
+    // Handle null, undefined, or empty content
+    if (!content || content === null || content === undefined || content === 'null') {
+      return '';
+    }
+    
+    // Convert to string if not already
+    let contentStr = typeof content === 'string' ? content : String(content);
+    
     // Convert markdown-like formatting to HTML
-    let formatted = content
+    let formatted = contentStr
       // Bold text
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       // Italic text
@@ -1391,14 +1599,18 @@ class SidebarManager {
       // Lists
       .replace(/^\* (.*$)/gm, '<li>$1</li>')
       .replace(/^- (.*$)/gm, '<li>$1</li>')
+      // YouTube URLs - make them clickable
+      .replace(/(https?:\/\/www\.youtube\.com\/watch\?v=[\w-]+|https?:\/\/youtu\.be\/[\w-]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #065fd4; text-decoration: none; word-break: break-all;">$1</a>')
       // Line breaks
       .replace(/\n/g, '<br>');
     
     // Wrap consecutive list items in ul tags
     formatted = formatted.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
     
-    // Convert timestamps to clickable buttons
-    formatted = this.formatTimestamps(formatted);
+    // Convert timestamps to clickable buttons (only if on video page)
+    if (this.videoId) {
+      formatted = this.formatTimestamps(formatted);
+    }
     
     return formatted;
   }
@@ -1614,7 +1826,13 @@ class SidebarManager {
     welcomeDiv.className = 'welcome-message';
     welcomeDiv.innerHTML = `
       <p>👋 Welcome to YouTube Video Assistant!</p>
-      <p>Ask me anything! Navigate to a video for video-specific questions, or ask general questions anytime.</p>
+      <p>I can help you:</p>
+      <ul style="text-align: left; margin: 12px 0;">
+        <li>Find videos on YouTube</li>
+        <li>Index videos for analysis</li>
+        <li>Answer questions about videos</li>
+      </ul>
+      <p>Try asking: "find videos about machine learning" or "find and index videos about AI"</p>
     `;
     this.chatMessages.appendChild(welcomeDiv);
     

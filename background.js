@@ -42,6 +42,14 @@ class BackgroundService {
           });
           return true;
           
+        case 'agenticChat':
+          this.agenticChat(request.query, request.conversationContext, sender.tab.id).then(sendResponse);
+          return true;
+          
+        case 'agenticChatStream':
+          this.agenticChatStream(request.query, request.conversationContext, sender.tab.id).then(sendResponse);
+          return true;
+          
         case 'test':
           console.log('Background: Received test message');
           sendResponse({status: 'ok', timestamp: Date.now()});
@@ -80,7 +88,7 @@ class BackgroundService {
   async checkBackendHealth() {
     try {
       const backendUrl = await this.getBackendUrl();
-      const response = await fetch(`${backendUrl}/health`);
+      const response = await fetch(`${backendUrl}/api/health`);
       if (!response.ok) {
         throw new Error(`Backend health check failed: ${response.status}`);
       }
@@ -103,28 +111,20 @@ class BackgroundService {
 
   async indexVideo(videoUrl, tabId) {
     try {
-      // Validate YouTube URL
       if (!this.isValidYouTubeUrl(videoUrl)) {
         throw new Error('Invalid YouTube URL');
       }
 
-      // Get backend URL
       const backendUrl = await this.getBackendUrl();
       if (!backendUrl || backendUrl === 'REPLACE_WITH_BACKEND_URL') {
         throw new Error('Backend URL not configured');
       }
 
-      // Send status update: Downloading Video
       this.sendStatusUpdate(tabId, 'Downloading Video', 'Retrieving video content from YouTube');
-
-      // Send status update: Processing Content
       this.sendStatusUpdate(tabId, 'Processing Content', 'Extracting audio, visual, and text data');
-      
-      // Send status update: Uploading to Twelve Labs
       this.sendStatusUpdate(tabId, 'Uploading to Twelve Labs', 'Sending video to AI processing engine');
       
-      // Call backend API to download and index video
-      const response = await fetch(`${backendUrl}/download-and-index`, {
+      const response = await fetch(`${backendUrl}/api/download-and-index`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -145,17 +145,12 @@ class BackgroundService {
         throw new Error(result.error);
       }
 
-      // Send status update: AI Indexing
       this.sendStatusUpdate(tabId, 'AI Indexing', 'Creating searchable embeddings and analysis');
       
-      // Store the video ID for future analysis calls
       if (result.video_id) {
         await this.storeVideoId(videoUrl, result.video_id);
-        
-        // Send final status update
         this.sendStatusUpdate(tabId, 'Ready for Analysis', 'Video is indexed and ready for questions');
         
-        // Return the result with the video ID
         return {
           video_id: result.video_id,
           success: true,
@@ -186,11 +181,9 @@ class BackgroundService {
 
   async storeVideoId(videoUrl, videoId) {
     try {
-      // Store the mapping between YouTube URL and Twelve Labs video ID
       const videoMappings = await chrome.storage.local.get(['videoMappings']) || {};
       const mappings = videoMappings.videoMappings || {};
       
-      // Extract YouTube video ID for the key
       const youtubeVideoId = this.extractYouTubeVideoId(videoUrl);
       mappings[youtubeVideoId] = {
         video_id: videoId,
@@ -242,12 +235,10 @@ class BackgroundService {
         throw new Error('Backend URL not configured');
       }
 
-      // Send status update
       if (tabId) {
         this.sendStatusUpdate(tabId, 'Preparing Analysis', 'Setting up AI analysis request...');
       }
 
-      // Map analysis types to backend format
       const analysisTypeMap = {
         'summary': 'summary',
         'chapters': 'chapter',
@@ -258,23 +249,20 @@ class BackgroundService {
 
       const backendAnalysisType = analysisTypeMap[type] || 'open-ended';
 
-      // Build request body
       const requestBody = {
         video_id: videoId,
         analysis_type: backendAnalysisType
       };
 
-      // Add prompt if provided (for open-ended or custom prompts)
       if (prompt || customPrompt) {
         requestBody.prompt = customPrompt || prompt;
       }
 
-      // Send status update
       if (tabId) {
         this.sendStatusUpdate(tabId, 'Connecting to AI', 'Starting streaming analysis...');
       }
 
-      const response = await fetch(`${backendUrl}/analyze`, {
+      const response = await fetch(`${backendUrl}/api/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -287,7 +275,6 @@ class BackgroundService {
         throw new Error(errorData.error || `Analysis failed: ${response.status} ${response.statusText}`);
       }
 
-      // Handle streaming response
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -301,7 +288,7 @@ class BackgroundService {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
           if (!line.trim()) continue;
@@ -309,7 +296,6 @@ class BackgroundService {
           try {
             const data = JSON.parse(line);
 
-            // First line contains metadata
             if (data.status === 'success' && data.streaming) {
               metadata = data;
               if (tabId) {
@@ -318,11 +304,9 @@ class BackgroundService {
               continue;
             }
 
-            // Text chunks
             if (data.chunk) {
               fullText += data.chunk;
               
-              // Send streaming update to content script
               if (tabId) {
                 chrome.tabs.sendMessage(tabId, {
                   action: 'streamingChunk',
@@ -332,7 +316,6 @@ class BackgroundService {
               }
             }
 
-            // Done marker
             if (data.done) {
               console.log('Streaming complete, full text:', fullText);
               break;
@@ -343,7 +326,6 @@ class BackgroundService {
         }
       }
 
-      // Return the complete result
       return {
         result: fullText,
         video_id: metadata?.video_id || videoId,
@@ -356,7 +338,213 @@ class BackgroundService {
       throw error;
     }
   }
+
+  async agenticChat(query, conversationContext = {}, tabId = null) {
+    try {
+      const backendUrl = await this.getBackendUrl();
+      if (!backendUrl || backendUrl === 'REPLACE_WITH_BACKEND_URL') {
+        throw new Error('Backend URL not configured');
+      }
+
+      if (tabId) {
+        this.sendStatusUpdate(tabId, 'Processing Query', 'Understanding your request...');
+      }
+
+      const response = await fetch(`${backendUrl}/api/agentic-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          query: query,
+          conversation_context: conversationContext
+        })
+      });
+
+      if (tabId) {
+        this.sendStatusUpdate(tabId, 'Processing Response', 'Getting results from AI...');
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `Backend request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      let formattedResponse = result.response || 'I processed your request.';
+
+      if (result.found_videos && result.found_videos.length > 0) {
+        formattedResponse += '\n\n**Found Videos:**\n\n';
+        result.found_videos.forEach((video, index) => {
+          formattedResponse += `${index + 1}. **${video.title || 'Untitled'}**\n`;
+          if (video.channelName) {
+            formattedResponse += `   📺 Channel: ${video.channelName}\n`;
+          }
+          if (video.duration && video.duration !== 'Unknown') {
+            formattedResponse += `   ⏱️ Duration: ${video.duration}\n`;
+          }
+          if (video.url) {
+            formattedResponse += `   🔗 ${video.url}\n`;
+          }
+          formattedResponse += '\n';
+        });
+      }
+
+      if (result.indexed_videos && result.indexed_videos.length > 0) {
+        formattedResponse += '\n**Indexed Videos:**\n\n';
+        result.indexed_videos.forEach((video, index) => {
+          formattedResponse += `${index + 1}. ${video.video_url || video.url || 'Video'} - ${video.status || 'indexed'}\n`;
+        });
+        formattedResponse += '\n';
+      }
+
+      if (result.analysis_result) {
+        formattedResponse += '\n**Analysis Result:**\n\n' + result.analysis_result;
+      }
+
+      return {
+        result: formattedResponse,
+        intent: result.intent,
+        found_videos: result.found_videos,
+        indexed_videos: result.indexed_videos,
+        video_id: result.video_id,
+        success: true
+      };
+    } catch (error) {
+      console.error('Agentic chat error:', error);
+      throw error;
+    }
+  }
+
+  async agenticChatStream(query, conversationContext = {}, tabId = null) {
+    try {
+      const backendUrl = await this.getBackendUrl();
+      if (!backendUrl || backendUrl === 'REPLACE_WITH_BACKEND_URL') {
+        throw new Error('Backend URL not configured');
+      }
+
+      if (tabId) {
+        this.sendStatusUpdate(tabId, 'Processing Query', 'Understanding your request...');
+      }
+
+      const response = await fetch(`${backendUrl}/api/agentic-chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          query: query,
+          conversation_context: conversationContext
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `Backend request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullResponse = '';
+      let completedData = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+
+          // Handle Server-Sent Events format: data: {...}
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonStr = line.slice(6);
+              const data = JSON.parse(jsonStr);
+
+              if (data.status === 'info' && data.message) {
+                if (tabId) {
+                  chrome.tabs.sendMessage(tabId, {
+                    action: 'agenticChatStatus',
+                    status: data.status,
+                    message: data.message
+                  });
+                }
+                continue;
+              }
+
+              if (data.status === 'success') {
+                if (data.message) {
+                  if (tabId) {
+                    chrome.tabs.sendMessage(tabId, {
+                      action: 'agenticChatStatus',
+                      status: data.status,
+                      message: data.message
+                    });
+                  }
+                }
+                continue;
+              }
+
+              if (data.status === 'completed') {
+                completedData = data;
+                fullResponse = data.response || '';
+                
+                if (fullResponse.startsWith('Intent classified as:')) {
+                  fullResponse = fullResponse.replace(/^Intent classified as:\s*/i, '').trim();
+                  if (!fullResponse && data.found_videos && data.found_videos.length > 0) {
+                    fullResponse = `Found ${data.found_videos.length} video${data.found_videos.length > 1 ? 's' : ''} for you:`;
+                  }
+                }
+                
+                if (tabId) {
+                  chrome.tabs.sendMessage(tabId, {
+                    action: 'streamingChunk',
+                    chunk: fullResponse,
+                    fullText: fullResponse,
+                    found_videos: data.found_videos
+                  });
+                }
+                break;
+              }
+
+              if (data.status === 'error') {
+                throw new Error(data.message || data.error || 'Unknown error');
+              }
+
+            } catch (e) {
+              console.warn('Failed to parse SSE data:', line, e);
+            }
+          }
+        }
+
+        if (completedData) break;
+      }
+
+      return {
+        result: completedData?.response || fullResponse,
+        intent: completedData?.intent,
+        found_videos: completedData?.found_videos || [],
+        indexed_videos: completedData?.indexed_videos || [],
+        video_id: completedData?.video_id,
+        success: true,
+        streaming: true
+      };
+    } catch (error) {
+      console.error('Agentic chat streaming error:', error);
+      throw error;
+    }
+  }
 }
 
-// Initialize background service
 new BackgroundService();

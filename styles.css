@@ -2046,6 +2046,209 @@ body:not(.yt-assistant-active) #primary {
   margin-top: 8px;
 }
 
+/* Video Cards */
+.video-cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 0;
+  width: 100%;
+}
+
+.video-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 24px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 2px solid #e5e7eb;
+  border-radius: 20px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.video-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(59, 130, 246, 0.01) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.video-card:hover {
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+  border-color: #3b82f6;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.2),
+              0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.video-card:hover::before {
+  opacity: 1;
+}
+
+.video-card-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+  color: #ffffff;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.video-card:hover .video-card-number {
+  transform: scale(1.15) rotate(5deg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.video-card-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.video-card-title {
+  font-weight: 700;
+  font-size: 18px;
+  color: #111827;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: color 0.2s ease;
+  margin: 0;
+}
+
+.video-card:hover .video-card-title {
+  color: #3b82f6;
+}
+
+.video-card-url {
+  font-size: 13px;
+  color: #6366f1;
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  word-break: break-all;
+  opacity: 0.8;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.video-card:hover .video-card-url {
+  opacity: 1;
+  color: #4f46e5;
+}
+
+.video-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  color: #4b5563;
+  margin-top: 4px;
+}
+
+.video-card-channel,
+.video-card-duration {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.video-card-label {
+  font-weight: 600;
+  color: #6b7280;
+  min-width: 70px;
+}
+
+.video-card-arrow {
+  font-size: 28px;
+  font-weight: 300;
+  color: #9ca3af;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  opacity: 0.5;
+  margin-top: 4px;
+}
+
+.video-card:hover .video-card-arrow {
+  color: #3b82f6;
+  transform: translateX(6px);
+  opacity: 1;
+}
+
+/* Dark theme for video cards */
+.sidebar.dark-theme .video-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  border-color: #2a2a2a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.sidebar.dark-theme .video-card:hover {
+  background: linear-gradient(135deg, #252525 0%, #1a1a1a 100%);
+  border-color: #3b82f6;
+  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.25),
+              0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.sidebar.dark-theme .video-card-title {
+  color: #e5e5e5;
+}
+
+.sidebar.dark-theme .video-card:hover .video-card-title {
+  color: #60a5fa;
+}
+
+.sidebar.dark-theme .video-card-url {
+  color: #818cf8;
+  opacity: 0.9;
+}
+
+.sidebar.dark-theme .video-card:hover .video-card-url {
+  color: #a5b4fc;
+  opacity: 1;
+}
+
+.sidebar.dark-theme .video-card-meta {
+  color: #9ca3af;
+}
+
+.sidebar.dark-theme .video-card-label {
+  color: #6b7280;
+}
+
+.sidebar.dark-theme .video-card-number {
+  background: linear-gradient(135deg, #ffffff 0%, #e5e5e5 100%);
+  color: #000000;
+}
+
+.sidebar.dark-theme .video-card-arrow {
+  color: #6b7280;
+}
+
+.sidebar.dark-theme .video-card:hover .video-card-arrow {
+  color: #60a5fa;
+}
+
 /* Responsive design for processing flow */
 @media (max-width: 768px) {
   .step {
@@ -2076,6 +2279,14 @@ body:not(.yt-assistant-active) #primary {
   }
   
   .loading-text {
+    font-size: 14px;
+  }
+  
+  .video-card {
+    padding: 12px;
+  }
+  
+  .video-card-title {
     font-size: 14px;
   }
 }
