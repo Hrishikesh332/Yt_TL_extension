@@ -129,7 +129,7 @@ The extension requires a backend API server that implements the following endpoi
 
 ### System Architecture
 
-![Browserbase Architecture](src/final_browserbase.png)
+![Browserbase Architecture](src/Final_v2_browserbase.png)
 
 Data flows unidirectionally from user interactions through content scripts to service workers, which then communicate with backend APIs. 
 
