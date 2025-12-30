@@ -193,24 +193,6 @@ html[dark] .yt-assistant-header-icon img,
   word-wrap: break-word;
 }
 
-.streaming-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 1em;
-  background-color: currentColor;
-  margin-left: 2px;
-  animation: blink 1s step-end infinite;
-  vertical-align: text-bottom;
-}
-
-@keyframes blink {
-  0%, 50% {
-    opacity: 1;
-  }
-  51%, 100% {
-    opacity: 0;
-  }
-}
 
 /* Timestamp Button Styles */
 .timestamp-btn {
@@ -653,6 +635,7 @@ body.yt-assistant-active #info-contents {
 .sidebar.light-theme #chat-input {
   background: transparent !important;
   color: #374151 !important;
+  caret-color: #374151 !important;
 }
 
 .sidebar.light-theme #chat-input::placeholder {
@@ -1720,11 +1703,13 @@ body:not(.yt-assistant-active) #primary {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
-  transition: all 0.3s ease;
-  overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  overflow: visible;
   width: 100%;
   box-sizing: border-box;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 .textarea-wrapper:focus-within {
@@ -1742,6 +1727,7 @@ body:not(.yt-assistant-active) #primary {
   font-weight: 400;
   background: transparent;
   color: #374151;
+  caret-color: #374151;
   resize: none;
   min-height: 24px;
   max-height: 120px;
@@ -1750,6 +1736,10 @@ body:not(.yt-assistant-active) #primary {
   width: 100%;
   box-sizing: border-box;
   transition: color 0.3s ease;
+  position: relative;
+  z-index: 1;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 #chat-input::placeholder {
@@ -1817,6 +1807,7 @@ body:not(.yt-assistant-active) #primary {
 .sidebar.dark-theme #chat-input {
   background: transparent;
   color: #e5e5e5;
+  caret-color: #e5e5e5;
 }
 
 .sidebar.dark-theme #chat-input::placeholder {

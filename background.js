@@ -64,12 +64,11 @@ class BackgroundService {
         // Auto-configure with backend URL (will be replaced by build script from .env)
         chrome.storage.sync.set({
           theme: 'light',
-          backendUrl: 'https://backend-tl-yt-extension.onrender.com',
           autoIndex: true,
           autoConfigured: true,
           configuredAt: new Date().toISOString()
         }, () => {
-          console.log('Extension auto-configured with backend URL');
+          console.log('Extension auto-configured');
         });
       }
     });
@@ -77,7 +76,7 @@ class BackgroundService {
 
   async getBackendUrl() {
     const result = await chrome.storage.sync.get(['backendUrl']);
-    return result.backendUrl || 'https://backend-tl-yt-extension.onrender.com';
+    return result.backendUrl || null;
   }
 
   async saveBackendUrl(backendUrl) {
@@ -116,7 +115,7 @@ class BackgroundService {
       }
 
       const backendUrl = await this.getBackendUrl();
-      if (!backendUrl || backendUrl === 'https://backend-tl-yt-extension.onrender.com') {
+      if (!backendUrl) {
         throw new Error('Backend URL not configured');
       }
 
@@ -231,7 +230,7 @@ class BackgroundService {
   async analyzeVideo(videoId, type, prompt = null, customPrompt = null, tabId = null) {
     try {
       const backendUrl = await this.getBackendUrl();
-      if (!backendUrl || backendUrl === 'https://backend-tl-yt-extension.onrender.com') {
+      if (!backendUrl) {
         throw new Error('Backend URL not configured');
       }
 
@@ -342,7 +341,7 @@ class BackgroundService {
   async agenticChat(query, conversationContext = {}, tabId = null) {
     try {
       const backendUrl = await this.getBackendUrl();
-      if (!backendUrl || backendUrl === 'https://backend-tl-yt-extension.onrender.com') {
+      if (!backendUrl) {
         throw new Error('Backend URL not configured');
       }
 
@@ -424,7 +423,7 @@ class BackgroundService {
   async agenticChatStream(query, conversationContext = {}, tabId = null) {
     try {
       const backendUrl = await this.getBackendUrl();
-      if (!backendUrl || backendUrl === 'https://backend-tl-yt-extension.onrender.com') {
+      if (!backendUrl) {
         throw new Error('Backend URL not configured');
       }
 

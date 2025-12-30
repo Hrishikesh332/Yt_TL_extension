@@ -855,6 +855,9 @@ class SidebarManager {
     this.theme = this.detectYouTubeTheme();
     this.videoIndexed = false;
     
+    // Store found videos for conversation context (two-step indexing flow)
+    this.foundVideos = [];
+    
     // Apply the detected theme immediately
     this.applyTheme();
     
@@ -1136,12 +1139,6 @@ class SidebarManager {
         const textContainer = streamingMsg.querySelector('.streaming-text');
         const rawText = textContainer ? textContainer.textContent : '';
         
-        // Remove cursor
-        const cursor = streamingMsg.querySelector('.streaming-cursor');
-        if (cursor) {
-          cursor.remove();
-        }
-        
         // Format the content with timestamps and markdown
         const messageContent = streamingMsg.querySelector('.message-content');
         if (messageContent && rawText) {
@@ -1168,6 +1165,9 @@ class SidebarManager {
       
       this.currentStreamingMessageId = null;
       this.isStreaming = false;
+      
+      // Re-enable input after processing
+      this.enableInput();
     } catch (error) {
       // Hide loader before showing error
       this.hideLoadingMessage();
@@ -1183,6 +1183,9 @@ class SidebarManager {
       console.error('Error processing message:', error);
       this.currentStreamingMessageId = null;
       this.isStreaming = false;
+      
+      // Re-enable input even on error
+      this.enableInput();
     }
   }
 
@@ -1203,7 +1206,6 @@ class SidebarManager {
       streamingMsg.innerHTML = `
         <div class="message-content">
           <div class="streaming-text"></div>
-          <div class="streaming-cursor"></div>
         </div>
       `;
       this.chatMessages.appendChild(streamingMsg);
@@ -1213,8 +1215,6 @@ class SidebarManager {
     // Update the text content with the accumulated text (plain text during streaming)
     const textContainer = streamingMsg.querySelector('.streaming-text');
     if (textContainer) {
-      // Only update if this is during streaming (not final)
-      // Store as plain text during streaming
       textContainer.textContent = fullText;
     }
     
@@ -1306,10 +1306,16 @@ class SidebarManager {
       this.currentStreamingMessageId = `streaming-${Date.now()}`;
       this.isStreaming = true;
 
-      // Get conversation context if available
+      // Build conversation context with found videos if available (for two-step indexing flow)
       const conversationContext = {
-        auto_index: true
+        found_videos: this.foundVideos || [],
+        video_id: this.videoId || null
       };
+      
+      console.log('Sending agentic chat with context:', { 
+        query, 
+        foundVideosCount: this.foundVideos?.length || 0 
+      });
       
       // Use streaming endpoint for real-time updates
       const response = await chrome.runtime.sendMessage({
@@ -1332,23 +1338,34 @@ class SidebarManager {
         const textContainer = streamingMsg.querySelector('.streaming-text');
         const rawText = textContainer ? textContainer.textContent : '';
         
-        // Remove cursor
-        const cursor = streamingMsg.querySelector('.streaming-cursor');
-        if (cursor) {
-          cursor.remove();
-        }
-        
         // Format the content with markdown
         const messageContent = streamingMsg.querySelector('.message-content');
         if (messageContent) {
           // Clear existing content (removes streaming text and cursor)
           messageContent.innerHTML = '';
           
-          // If videos are found, only show cards (no text)
+          // If videos are found, store them for conversation context and show cards
           if (response.found_videos && response.found_videos.length > 0) {
+            // Store found videos for the two-step indexing flow
+            this.foundVideos = response.found_videos;
+            console.log('Stored found videos for context:', this.foundVideos.length);
+            
             const cardsContainer = this.createVideoCards(response.found_videos);
             messageContent.appendChild(cardsContainer);
+            
+            // Show simple confirmation prompt below cards
+            const promptDiv = document.createElement('div');
+            promptDiv.style.marginTop = '12px';
+            promptDiv.style.fontSize = '14px';
+            promptDiv.style.lineHeight = '1.5';
+            promptDiv.textContent = "Would you like me to index these videos so you can analyze them later? Reply 'yes' to proceed with indexing.";
+            messageContent.appendChild(promptDiv);
           } else {
+            // Clear found videos if no new videos found (e.g., after indexing)
+            if (response.indexed_videos) {
+              this.foundVideos = [];
+            }
+            
             // Only show text if no videos found
             if (rawText && rawText.trim()) {
               const textDiv = document.createElement('div');
@@ -1366,8 +1383,12 @@ class SidebarManager {
                                  (response.result && typeof response.result === 'string' ? response.result : null) ||
                                  (response.response && typeof response.response === 'string' ? response.response : null);
         
-        // If videos are found, only show cards (no text)
+        // If videos are found, store them and show cards
         if (response.found_videos && response.found_videos.length > 0) {
+          // Store found videos for the two-step indexing flow
+          this.foundVideos = response.found_videos;
+          console.log('Stored found videos for context:', this.foundVideos.length);
+          
           const messageDiv = document.createElement('div');
           messageDiv.className = 'message assistant-message';
           const messageContent = document.createElement('div');
@@ -1376,26 +1397,44 @@ class SidebarManager {
           const cardsContainer = this.createVideoCards(response.found_videos);
           messageContent.appendChild(cardsContainer);
           
-          messageDiv.appendChild(messageContent);
-          this.chatMessages.appendChild(messageDiv);
-          this.scrollToBottom();
-        } else if (formattedResponse && formattedResponse !== 'null') {
-          // Only show text if no videos found
-          const messageDiv = document.createElement('div');
-          messageDiv.className = 'message assistant-message';
-          const messageContent = document.createElement('div');
-          messageContent.className = 'message-content';
-          
-          messageContent.innerHTML = this.formatMessageContent(formattedResponse);
+          // Show simple confirmation prompt below cards
+          const promptDiv = document.createElement('div');
+          promptDiv.style.marginTop = '12px';
+          promptDiv.style.fontSize = '14px';
+          promptDiv.style.lineHeight = '1.5';
+          promptDiv.textContent = "Would you like me to index these videos so you can analyze them later? Reply 'yes' to proceed with indexing.";
+          messageContent.appendChild(promptDiv);
           
           messageDiv.appendChild(messageContent);
           this.chatMessages.appendChild(messageDiv);
           this.scrollToBottom();
+        } else {
+          // Clear found videos if indexed
+          if (response.indexed_videos) {
+            this.foundVideos = [];
+          }
+          
+          if (formattedResponse && formattedResponse !== 'null') {
+            // Only show text if no videos found
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant-message';
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            messageContent.innerHTML = this.formatMessageContent(formattedResponse);
+            
+            messageDiv.appendChild(messageContent);
+            this.chatMessages.appendChild(messageDiv);
+            this.scrollToBottom();
+          }
         }
       }
       
       this.currentStreamingMessageId = null;
       this.isStreaming = false;
+      
+      // Re-enable input after response is complete
+      this.enableInput();
       
       // Return null to prevent sendMessage from processing again
       // The streaming message has already been finalized above
@@ -1414,6 +1453,9 @@ class SidebarManager {
       this.addMessage('assistant', `Sorry, I encountered an error: ${error.message}. Please try again.`);
       this.currentStreamingMessageId = null;
       this.isStreaming = false;
+      
+      // Re-enable input even on error
+      this.enableInput();
       throw error;
     }
   }
@@ -1909,21 +1951,8 @@ class SidebarManager {
   }
 
   formatTimestamps(text) {
-    // First, handle seconds-only format: 131s, (131s), etc.
-    text = text.replace(/(\()?\b(\d+)s\b(\))?/g, (match, openParen, seconds, closeParen) => {
-      const totalSeconds = parseInt(seconds);
-      const displayTime = openParen ? `(${seconds}s)` : `${seconds}s`;
-      
-      return `<button class="timestamp-btn" data-seconds="${totalSeconds}" title="Jump to ${displayTime}">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
-          <path d="M12 6v6l4 2"/>
-        </svg>
-        <span>${displayTime}</span>
-      </button>`;
-    });
-    
-    // Then handle standard formats: (00:00), 00:00, (0:00), 0:00, (00:00:00), 00:00:00
+    // Only handle standard time formats: (00:00), 00:00, (0:00), 0:00, (00:00:00), 00:00:00
+    // Do NOT convert seconds-only format like "23s"
     const timestampRegex = /(\()?\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b(\))?/g;
     
     return text.replace(timestampRegex, (match, openParen, hours, minutes, seconds, closeParen) => {
@@ -2062,7 +2091,7 @@ class SidebarManager {
         <div class="settings-body">
           <div class="setting-item">
             <label for="backend-url">Backend URL:</label>
-            <input type="text" id="backend-url" placeholder="http://localhost:5000" />
+            <input type="text" id="backend-url" placeholder="https://your-backend-url.com" />
             <button id="save-backend-url">Save</button>
           </div>
           <div class="setting-item">
@@ -2096,7 +2125,7 @@ class SidebarManager {
 
     // Load current settings
     chrome.storage.sync.get(['backendUrl', 'theme']).then(result => {
-      modal.querySelector('#backend-url').value = result.backendUrl || 'http://localhost:5000';
+      modal.querySelector('#backend-url').value = result.backendUrl || '';
       modal.querySelector('#theme-select').value = result.theme || 'light';
     });
   }
