@@ -61,7 +61,7 @@ class BackgroundService {
   setupInstallHandlers() {
     chrome.runtime.onInstalled.addListener((details) => {
       if (details.reason === 'install') {
-        // Auto-configure with backend URL (will be replaced by build script from .env)
+        // Auto-configure (backend URL will be set separately)
         chrome.storage.sync.set({
           theme: 'light',
           autoIndex: true,

@@ -4,7 +4,6 @@ class YouTubeVideoAssistant {
     this.isSidebarOpen = false;
     this.currentVideoId = null;
     this.videoIndexed = false;
-    this.headerFixInterval = null;
     this.setupVideoDetection();
     this.setupMessageHandlers();
     this.setupSidebarCloseListener();
@@ -17,28 +16,10 @@ class YouTubeVideoAssistant {
       this.sidebar = null;
       this.isSidebarOpen = false;
       
-      // Remove layout styles to restore YouTube to normal
-      this.removeLayoutStyles();
-      
-      // Remove responsive layout if NOT on video page
-      if (!this.isVideoPage()) {
-        this.removeHomepageLayout();
-      }
-      
-      // Remove classes
-      document.body.classList.remove('yt-assistant-active');
-      document.body.classList.remove('yt-assistant-homepage');
-      document.documentElement.classList.remove('yt-assistant-active');
-      
       // Update button states
       const playerBtn = document.getElementById('yt-assistant-player-btn');
       if (playerBtn) {
         playerBtn.style.opacity = '0.7';
-      }
-      
-      const headerBtn = document.getElementById('yt-assistant-header-btn');
-      if (headerBtn) {
-        headerBtn.classList.remove('active');
       }
     });
   }
@@ -50,35 +31,14 @@ class YouTubeVideoAssistant {
     // Add header button
     this.addHeaderButton();
     
-    // Track current page type for layout changes
-    let lastPageType = this.isVideoPage() ? 'video' : 'other';
-    
-    // Detect when user navigates between pages
+    // Detect when user navigates to a video page
     const observer = new MutationObserver(() => {
       const videoId = this.getCurrentVideoId();
-      const currentPageType = videoId ? 'video' : 'other';
-      
-      // Check if page type changed and sidebar is open
-      if (currentPageType !== lastPageType && this.isSidebarOpen) {
-        console.log(`Page type changed from ${lastPageType} to ${currentPageType}`);
-        this.updateLayoutForPageType(currentPageType);
-        lastPageType = currentPageType;
-      }
       
       // Check if navigated to a new video
       if (videoId && videoId !== this.currentVideoId) {
         this.currentVideoId = videoId;
         this.onVideoChange();
-      }
-      
-      // If on video page, check if menu buttons are available and add Ask button
-      if (videoId) {
-        const topLevelButtons = document.querySelector('ytd-menu-renderer #top-level-buttons-computed');
-        const existingBtn = document.getElementById('yt-assistant-menu-btn');
-        if (topLevelButtons && !existingBtn) {
-          console.log('Menu buttons detected in mutation observer, adding Ask button');
-          this.addMenuButton();
-        }
       } else if (!videoId && this.currentVideoId) {
         // Navigated away from video page, but keep sidebar open
         this.currentVideoId = null;
@@ -106,48 +66,10 @@ class YouTubeVideoAssistant {
     }
   }
 
-  updateLayoutForPageType(pageType) {
-    if (pageType === 'video') {
-      // Video page - remove responsive layout, use original layout
-      this.removeHomepageLayout();
-      document.body.classList.remove('yt-assistant-homepage');
-      this.applyLayoutStyles();
-    } else {
-      // All other pages (home, history, channels, etc.) - use responsive layout
-      document.body.classList.add('yt-assistant-homepage');
-      this.applyHomepageLayout();
-      
-      // Remove non-homepage styles
-      const app = document.querySelector('ytd-app');
-      if (app) {
-        app.style.maxWidth = '';
-        app.style.width = '';
-      }
-      const masthead = document.querySelector('#masthead-container');
-      if (masthead) {
-        masthead.style.maxWidth = '';
-        masthead.style.width = '';
-      }
-    }
-  }
-
   closeSidebarCompletely() {
-    // Clear header fix interval
-    if (this.headerFixInterval) {
-      clearInterval(this.headerFixInterval);
-      this.headerFixInterval = null;
-    }
-    
-    // Remove the injected homepage stylesheet
-    const styleEl = document.getElementById('yt-assistant-homepage-styles');
-    if (styleEl) {
-      styleEl.remove();
-    }
-    
     if (this.sidebar) {
       // Remove class from body to restore YouTube layout
       document.body.classList.remove('yt-assistant-active');
-      document.body.classList.remove('yt-assistant-homepage');
       document.documentElement.classList.remove('yt-assistant-active');
       this.removeLayoutStyles();
       
@@ -200,30 +122,8 @@ class YouTubeVideoAssistant {
     // Add player control button
     this.addPlayerControlButton();
     
-    // Add menu button immediately and also with retry
+    // Add menu button
     this.addMenuButton();
-    
-    // Also try adding it after a short delay to catch late-loading elements
-    setTimeout(() => {
-      this.addMenuButton();
-    }, 100);
-    
-    setTimeout(() => {
-      this.addMenuButton();
-    }, 500);
-  }
-
-  isHomePage() {
-    // Check if we're on the YouTube homepage
-    const pathname = window.location.pathname;
-    const isHome = pathname === '/' || pathname === '/feed/subscriptions' || pathname === '/feed/trending';
-    const hasVideoId = new URLSearchParams(window.location.search).get('v');
-    return isHome && !hasVideoId;
-  }
-
-  isVideoPage() {
-    // Check if we're on a video watch page
-    return !!this.getCurrentVideoId();
   }
 
   createSidebar() {
@@ -240,40 +140,26 @@ class YouTubeVideoAssistant {
     // Also add to html element for better coverage
     document.documentElement.classList.add('yt-assistant-active');
     
-    // Apply responsive layout to all pages EXCEPT video pages
-    if (!this.isVideoPage()) {
-      document.body.classList.add('yt-assistant-homepage');
-      console.log('Non-video page detected - applying responsive layout');
-      this.applyHomepageLayout();
-    } else {
-      document.body.classList.remove('yt-assistant-homepage');
-      // Video pages keep their original layout
-      const app = document.querySelector('ytd-app');
-      if (app) {
-        app.style.maxWidth = 'calc(100vw - 425px)';
-        app.style.width = 'calc(100vw - 425px)';
-        console.log('Applied inline styles to ytd-app for video page');
-      }
-      
-      const masthead = document.querySelector('#masthead-container');
-      if (masthead) {
-        masthead.style.maxWidth = 'calc(100vw - 425px)';
-        masthead.style.width = 'calc(100vw - 425px)';
-        console.log('Applied inline styles to masthead for video page');
-      }
+    // Force a reflow to ensure styles are applied
+    const app = document.querySelector('ytd-app');
+    if (app) {
+      app.style.maxWidth = 'calc(100vw - 425px)';
+      app.style.width = 'calc(100vw - 425px)';
+      console.log('Applied inline styles to ytd-app');
+    }
+    
+    const masthead = document.querySelector('#masthead-container');
+    if (masthead) {
+      masthead.style.maxWidth = 'calc(100vw - 425px)';
+      masthead.style.width = 'calc(100vw - 425px)';
+      console.log('Applied inline styles to masthead');
     }
     
     document.body.offsetHeight;
     
-    // Detect YouTube's theme for initial sidebar theme
-    const isYouTubeDark = document.documentElement.hasAttribute('dark') || 
-                          document.documentElement.classList.contains('dark');
-    const initialTheme = isYouTubeDark ? 'dark' : 'light';
-    
     // Create sidebar container
     const sidebarContainer = document.createElement('div');
     sidebarContainer.id = 'youtube-video-assistant-sidebar';
-    sidebarContainer.className = `sidebar ${initialTheme}-theme`; // Match YouTube's theme
     sidebarContainer.innerHTML = `
       <div class="sidebar-top-buttons">
         <button class="dark-mode-toggle-btn" title="Toggle Dark Mode">
@@ -520,7 +406,7 @@ class YouTubeVideoAssistant {
       existingBtn.remove();
     }
 
-    // Wait for menu renderer to be ready - check more frequently
+    // Wait for menu renderer to be ready
     const checkMenu = setInterval(() => {
       // Look for the segmented like/dislike button or top level buttons
       const topLevelButtons = document.querySelector('ytd-menu-renderer #top-level-buttons-computed');
@@ -528,13 +414,6 @@ class YouTubeVideoAssistant {
       if (topLevelButtons) {
         clearInterval(checkMenu);
         console.log('Found top level buttons, adding Ask button');
-        
-        // Check if button already exists
-        const existingBtn = document.getElementById('yt-assistant-menu-btn');
-        if (existingBtn) {
-          console.log('Ask button already exists, skipping');
-          return;
-        }
         
         // Create button container
         const buttonContainer = document.createElement('div');
@@ -596,13 +475,13 @@ class YouTubeVideoAssistant {
           console.log('Ask button added at the end');
         }
       }
-    }, 100); // Check every 100ms instead of 500ms
+    }, 500);
     
-    // Clear interval after 5 seconds if menu not found
+    // Clear interval after 10 seconds if menu not found
     setTimeout(() => {
       clearInterval(checkMenu);
       console.log('Stopped looking for menu buttons');
-    }, 5000);
+    }, 10000);
   }
 
   toggleSidebar() {
@@ -616,22 +495,11 @@ class YouTubeVideoAssistant {
         document.body.classList.add('yt-assistant-active');
         document.documentElement.classList.add('yt-assistant-active');
         this.applyLayoutStyles();
-        
-        // Also apply responsive layout if NOT on video page
-        if (!this.isVideoPage()) {
-          document.body.classList.add('yt-assistant-homepage');
-          this.applyHomepageLayout();
-        }
       } else {
         sidebar.classList.add('collapsed');
         document.body.classList.remove('yt-assistant-active');
         document.documentElement.classList.remove('yt-assistant-active');
         this.removeLayoutStyles();
-        
-        // Also remove responsive layout if NOT on video page
-        if (!this.isVideoPage()) {
-          this.removeHomepageLayout();
-        }
       }
       
       // Update button states
@@ -669,94 +537,7 @@ class YouTubeVideoAssistant {
     }
   }
 
-  applyHomepageLayout() {
-    const sidebarWidth = 400;
-    const viewportWidth = window.innerWidth;
-    // Calculate scale so content fills up to sidebar without overlap
-    // +150 provides minimal gap without overlapping at 100% zoom
-    const scale = (viewportWidth - sidebarWidth + 150) / viewportWidth;
-    
-    // Move sidebar to html element so it's not affected by body zoom
-    const sidebar = document.getElementById('youtube-video-assistant-sidebar');
-    if (sidebar && sidebar.parentElement === document.body) {
-      document.documentElement.appendChild(sidebar);
-    }
-    
-    // Inject styles - zoom only body, sidebar stays normal
-    let styleEl = document.getElementById('yt-assistant-homepage-styles');
-    if (!styleEl) {
-      styleEl = document.createElement('style');
-      styleEl.id = 'yt-assistant-homepage-styles';
-      document.head.appendChild(styleEl);
-    }
-    
-    // Zoom body to make YouTube think viewport is smaller
-    // Sidebar is on html so it stays at normal size
-    styleEl.textContent = `
-      body {
-        zoom: ${scale} !important;
-        -moz-transform: scale(${scale}) !important;
-        -moz-transform-origin: top left !important;
-        width: 100% !important;
-      }
-      
-      /* Hide the Create button */
-      ytd-masthead #buttons ytd-button-renderer.style-scope.ytd-masthead,
-      ytd-topbar-menu-button-renderer[button-renderer*="CREATE"],
-      #buttons > ytd-button-renderer,
-      a[href="/upload"] {
-        display: none !important;
-      }
-      
-      /* Sidebar stays at normal size */
-      #youtube-video-assistant-sidebar {
-        zoom: ${1/scale} !important;
-        position: fixed !important;
-        top: 0 !important;
-        right: 0 !important;
-        height: 100vh !important;
-        width: ${sidebarWidth}px !important;
-        z-index: 99999 !important;
-      }
-    `;
-    
-    console.log('Homepage layout applied - body zoom:', scale);
-  }
-
-  removeHomepageLayout() {
-    // Clear the header fix interval if it exists
-    if (this.headerFixInterval) {
-      clearInterval(this.headerFixInterval);
-      this.headerFixInterval = null;
-    }
-    
-    // Move sidebar back to body
-    const sidebar = document.getElementById('youtube-video-assistant-sidebar');
-    if (sidebar && sidebar.parentElement === document.documentElement) {
-      document.body.appendChild(sidebar);
-    }
-    
-    // Remove the injected stylesheet
-    const styleEl = document.getElementById('yt-assistant-homepage-styles');
-    if (styleEl) {
-      styleEl.remove();
-    }
-    
-    document.body.classList.remove('yt-assistant-homepage');
-    
-    console.log('Homepage layout removed - YouTube back to normal');
-  }
-
   applyLayoutStyles() {
-    // Check if we're on homepage
-    if (this.isHomePage()) {
-      document.body.classList.add('yt-assistant-homepage');
-      this.applyHomepageLayout();
-      return;
-    }
-    
-    document.body.classList.remove('yt-assistant-homepage');
-    
     const app = document.querySelector('ytd-app');
     if (app) {
       app.style.maxWidth = 'calc(100vw - 425px)';
@@ -777,9 +558,6 @@ class YouTubeVideoAssistant {
   }
 
   removeLayoutStyles() {
-    // Remove homepage layout if applicable
-    this.removeHomepageLayout();
-    
     const app = document.querySelector('ytd-app');
     if (app) {
       app.style.maxWidth = '';
@@ -850,16 +628,8 @@ class SidebarManager {
     this.chatMessages = container.querySelector('#chat-messages');
     this.chatInput = container.querySelector('#chat-input');
     this.sendBtn = container.querySelector('#send-btn');
-    
-    // Detect YouTube's theme and use it as default
-    this.theme = this.detectYouTubeTheme();
+    this.theme = 'light';
     this.videoIndexed = false;
-    
-    // Store found videos for conversation context (two-step indexing flow)
-    this.foundVideos = [];
-    
-    // Apply the detected theme immediately
-    this.applyTheme();
     
     this.setupEventListeners();
     this.loadSettings();
@@ -871,17 +641,6 @@ class SidebarManager {
       // Keep input enabled for general chat
       this.updateForNonVideoPage();
     }
-  }
-
-  // Detect YouTube's current theme (dark or light)
-  detectYouTubeTheme() {
-    // YouTube uses html[dark] attribute for dark mode
-    const isDarkMode = document.documentElement.hasAttribute('dark') || 
-                       document.documentElement.classList.contains('dark') ||
-                       document.querySelector('html[dark]') !== null;
-    
-    console.log('YouTube theme detected:', isDarkMode ? 'dark' : 'light');
-    return isDarkMode ? 'dark' : 'light';
   }
 
   setupEventListeners() {
@@ -906,17 +665,9 @@ class SidebarManager {
     // Note: Quick action buttons removed
 
     // Dark mode toggle button
-    const darkModeBtn = this.container.querySelector('.dark-mode-toggle-btn');
-    if (darkModeBtn) {
-      darkModeBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Dark mode toggle clicked, current theme:', this.theme);
-        this.toggleTheme();
-      });
-    } else {
-      console.error('Dark mode toggle button not found');
-    }
+    this.container.querySelector('.dark-mode-toggle-btn').addEventListener('click', () => {
+      this.toggleTheme();
+    });
 
     // Close button
     this.container.querySelector('.close-btn-top').addEventListener('click', () => {
@@ -1022,27 +773,13 @@ class SidebarManager {
   }
 
   async loadSettings() {
-    // Always use YouTube's detected theme as default
-    // The theme was already set in constructor via detectYouTubeTheme()
-    // User can still manually toggle, which will be saved for the session
-    console.log('Settings loaded, using YouTube theme:', this.theme);
+    const result = await chrome.storage.sync.get(['theme']);
+    this.theme = result.theme || 'light';
+    this.applyTheme();
   }
 
   applyTheme() {
-    if (!this.container) {
-      console.error('Container not found, cannot apply theme');
-      return;
-    }
-    
-    // Remove any existing theme classes
-    this.container.classList.remove('light-theme', 'dark-theme');
-    
-    // Add the current theme class - ensure sidebar class is always present
-    this.container.classList.add('sidebar');
-    this.container.classList.add(`${this.theme}-theme`);
-    
-    // Also set data attribute for CSS selectors
-    this.container.setAttribute('data-theme', this.theme);
+    this.container.className = `sidebar ${this.theme}-theme`;
     
     // Update icon visibility
     const sunIcon = this.container.querySelector('.sun-icon');
@@ -1056,29 +793,13 @@ class SidebarManager {
         sunIcon.style.display = 'block';
         moonIcon.style.display = 'none';
       }
-    } else {
-      console.warn('Theme icons not found');
     }
-    
-    console.log('Theme applied:', this.theme, 'to sidebar, classes:', this.container.className);
   }
 
   toggleTheme() {
-    const oldTheme = this.theme;
     this.theme = this.theme === 'light' ? 'dark' : 'light';
-    console.log(`Theme toggled from ${oldTheme} to ${this.theme}`);
-    
-    // Apply theme immediately
     this.applyTheme();
-    
-    // Save to storage
-    chrome.storage.sync.set({ theme: this.theme }, () => {
-      if (chrome.runtime.lastError) {
-        console.error('Error saving theme:', chrome.runtime.lastError);
-      } else {
-        console.log('Theme saved to storage:', this.theme);
-      }
-    });
+    chrome.storage.sync.set({ theme: this.theme });
   }
 
   async sendMessage() {
@@ -1139,6 +860,12 @@ class SidebarManager {
         const textContainer = streamingMsg.querySelector('.streaming-text');
         const rawText = textContainer ? textContainer.textContent : '';
         
+        // Remove cursor
+        const cursor = streamingMsg.querySelector('.streaming-cursor');
+        if (cursor) {
+          cursor.remove();
+        }
+        
         // Format the content with timestamps and markdown
         const messageContent = streamingMsg.querySelector('.message-content');
         if (messageContent && rawText) {
@@ -1165,9 +892,6 @@ class SidebarManager {
       
       this.currentStreamingMessageId = null;
       this.isStreaming = false;
-      
-      // Re-enable input after processing
-      this.enableInput();
     } catch (error) {
       // Hide loader before showing error
       this.hideLoadingMessage();
@@ -1183,9 +907,6 @@ class SidebarManager {
       console.error('Error processing message:', error);
       this.currentStreamingMessageId = null;
       this.isStreaming = false;
-      
-      // Re-enable input even on error
-      this.enableInput();
     }
   }
 
@@ -1206,6 +927,7 @@ class SidebarManager {
       streamingMsg.innerHTML = `
         <div class="message-content">
           <div class="streaming-text"></div>
+          <div class="streaming-cursor"></div>
         </div>
       `;
       this.chatMessages.appendChild(streamingMsg);
@@ -1215,6 +937,8 @@ class SidebarManager {
     // Update the text content with the accumulated text (plain text during streaming)
     const textContainer = streamingMsg.querySelector('.streaming-text');
     if (textContainer) {
+      // Only update if this is during streaming (not final)
+      // Store as plain text during streaming
       textContainer.textContent = fullText;
     }
     
@@ -1306,16 +1030,10 @@ class SidebarManager {
       this.currentStreamingMessageId = `streaming-${Date.now()}`;
       this.isStreaming = true;
 
-      // Build conversation context with found videos if available (for two-step indexing flow)
+      // Get conversation context if available
       const conversationContext = {
-        found_videos: this.foundVideos || [],
-        video_id: this.videoId || null
+        auto_index: true
       };
-      
-      console.log('Sending agentic chat with context:', { 
-        query, 
-        foundVideosCount: this.foundVideos?.length || 0 
-      });
       
       // Use streaming endpoint for real-time updates
       const response = await chrome.runtime.sendMessage({
@@ -1338,34 +1056,23 @@ class SidebarManager {
         const textContainer = streamingMsg.querySelector('.streaming-text');
         const rawText = textContainer ? textContainer.textContent : '';
         
+        // Remove cursor
+        const cursor = streamingMsg.querySelector('.streaming-cursor');
+        if (cursor) {
+          cursor.remove();
+        }
+        
         // Format the content with markdown
         const messageContent = streamingMsg.querySelector('.message-content');
         if (messageContent) {
           // Clear existing content (removes streaming text and cursor)
           messageContent.innerHTML = '';
           
-          // If videos are found, store them for conversation context and show cards
+          // If videos are found, only show cards (no text)
           if (response.found_videos && response.found_videos.length > 0) {
-            // Store found videos for the two-step indexing flow
-            this.foundVideos = response.found_videos;
-            console.log('Stored found videos for context:', this.foundVideos.length);
-            
             const cardsContainer = this.createVideoCards(response.found_videos);
             messageContent.appendChild(cardsContainer);
-            
-            // Show simple confirmation prompt below cards
-            const promptDiv = document.createElement('div');
-            promptDiv.style.marginTop = '12px';
-            promptDiv.style.fontSize = '14px';
-            promptDiv.style.lineHeight = '1.5';
-            promptDiv.textContent = "Would you like me to index these videos so you can analyze them later? Reply 'yes' to proceed with indexing.";
-            messageContent.appendChild(promptDiv);
           } else {
-            // Clear found videos if no new videos found (e.g., after indexing)
-            if (response.indexed_videos) {
-              this.foundVideos = [];
-            }
-            
             // Only show text if no videos found
             if (rawText && rawText.trim()) {
               const textDiv = document.createElement('div');
@@ -1383,12 +1090,8 @@ class SidebarManager {
                                  (response.result && typeof response.result === 'string' ? response.result : null) ||
                                  (response.response && typeof response.response === 'string' ? response.response : null);
         
-        // If videos are found, store them and show cards
+        // If videos are found, only show cards (no text)
         if (response.found_videos && response.found_videos.length > 0) {
-          // Store found videos for the two-step indexing flow
-          this.foundVideos = response.found_videos;
-          console.log('Stored found videos for context:', this.foundVideos.length);
-          
           const messageDiv = document.createElement('div');
           messageDiv.className = 'message assistant-message';
           const messageContent = document.createElement('div');
@@ -1397,44 +1100,26 @@ class SidebarManager {
           const cardsContainer = this.createVideoCards(response.found_videos);
           messageContent.appendChild(cardsContainer);
           
-          // Show simple confirmation prompt below cards
-          const promptDiv = document.createElement('div');
-          promptDiv.style.marginTop = '12px';
-          promptDiv.style.fontSize = '14px';
-          promptDiv.style.lineHeight = '1.5';
-          promptDiv.textContent = "Would you like me to index these videos so you can analyze them later? Reply 'yes' to proceed with indexing.";
-          messageContent.appendChild(promptDiv);
+          messageDiv.appendChild(messageContent);
+          this.chatMessages.appendChild(messageDiv);
+          this.scrollToBottom();
+        } else if (formattedResponse && formattedResponse !== 'null') {
+          // Only show text if no videos found
+          const messageDiv = document.createElement('div');
+          messageDiv.className = 'message assistant-message';
+          const messageContent = document.createElement('div');
+          messageContent.className = 'message-content';
+          
+          messageContent.innerHTML = this.formatMessageContent(formattedResponse);
           
           messageDiv.appendChild(messageContent);
           this.chatMessages.appendChild(messageDiv);
           this.scrollToBottom();
-        } else {
-          // Clear found videos if indexed
-          if (response.indexed_videos) {
-            this.foundVideos = [];
-          }
-          
-          if (formattedResponse && formattedResponse !== 'null') {
-            // Only show text if no videos found
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message assistant-message';
-            const messageContent = document.createElement('div');
-            messageContent.className = 'message-content';
-            
-            messageContent.innerHTML = this.formatMessageContent(formattedResponse);
-            
-            messageDiv.appendChild(messageContent);
-            this.chatMessages.appendChild(messageDiv);
-            this.scrollToBottom();
-          }
         }
       }
       
       this.currentStreamingMessageId = null;
       this.isStreaming = false;
-      
-      // Re-enable input after response is complete
-      this.enableInput();
       
       // Return null to prevent sendMessage from processing again
       // The streaming message has already been finalized above
@@ -1453,9 +1138,6 @@ class SidebarManager {
       this.addMessage('assistant', `Sorry, I encountered an error: ${error.message}. Please try again.`);
       this.currentStreamingMessageId = null;
       this.isStreaming = false;
-      
-      // Re-enable input even on error
-      this.enableInput();
       throw error;
     }
   }
@@ -1951,8 +1633,21 @@ class SidebarManager {
   }
 
   formatTimestamps(text) {
-    // Only handle standard time formats: (00:00), 00:00, (0:00), 0:00, (00:00:00), 00:00:00
-    // Do NOT convert seconds-only format like "23s"
+    // First, handle seconds-only format: 131s, (131s), etc.
+    text = text.replace(/(\()?\b(\d+)s\b(\))?/g, (match, openParen, seconds, closeParen) => {
+      const totalSeconds = parseInt(seconds);
+      const displayTime = openParen ? `(${seconds}s)` : `${seconds}s`;
+      
+      return `<button class="timestamp-btn" data-seconds="${totalSeconds}" title="Jump to ${displayTime}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+        <span>${displayTime}</span>
+      </button>`;
+    });
+    
+    // Then handle standard formats: (00:00), 00:00, (0:00), 0:00, (00:00:00), 00:00:00
     const timestampRegex = /(\()?\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b(\))?/g;
     
     return text.replace(timestampRegex, (match, openParen, hours, minutes, seconds, closeParen) => {
@@ -2062,10 +1757,8 @@ class SidebarManager {
     // Notify parent that sidebar is closing
     window.dispatchEvent(new CustomEvent('yt-assistant-sidebar-closed'));
     
-    // Remove classes from body to restore YouTube layout
+    // Remove class from body to restore YouTube layout
     document.body.classList.remove('yt-assistant-active');
-    document.body.classList.remove('yt-assistant-homepage');
-    document.documentElement.classList.remove('yt-assistant-active');
     
     this.container.remove();
     const toggleBtn = document.getElementById('video-assistant-toggle');
@@ -2091,7 +1784,7 @@ class SidebarManager {
         <div class="settings-body">
           <div class="setting-item">
             <label for="backend-url">Backend URL:</label>
-            <input type="text" id="backend-url" placeholder="https://your-backend-url.com" />
+            <input type="text" id="backend-url" placeholder="http://localhost:5000" />
             <button id="save-backend-url">Save</button>
           </div>
           <div class="setting-item">
@@ -2125,7 +1818,7 @@ class SidebarManager {
 
     // Load current settings
     chrome.storage.sync.get(['backendUrl', 'theme']).then(result => {
-      modal.querySelector('#backend-url').value = result.backendUrl || '';
+      modal.querySelector('#backend-url').value = result.backendUrl || 'http://localhost:5000';
       modal.querySelector('#theme-select').value = result.theme || 'light';
     });
   }
