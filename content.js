@@ -31,9 +31,24 @@ class YouTubeVideoAssistant {
     // Add header button
     this.addHeaderButton();
     
+    // Track current URL to detect navigation
+    let currentUrl = window.location.href;
+    
     // Detect when user navigates to a video page
     const observer = new MutationObserver(() => {
       const videoId = this.getCurrentVideoId();
+      const newUrl = window.location.href;
+      
+      // Check if URL changed (navigation occurred)
+      if (newUrl !== currentUrl) {
+        currentUrl = newUrl;
+        
+        // Check if navigated to channel or history page - close sidebar
+        if (this.shouldCloseSidebarOnNavigation(newUrl)) {
+          this.closeSidebarCompletely();
+          return;
+        }
+      }
       
       // Check if navigated to a new video
       if (videoId && videoId !== this.currentVideoId) {
@@ -58,6 +73,14 @@ class YouTubeVideoAssistant {
       childList: true,
       subtree: true
     });
+    
+    // Also listen for popstate (back/forward navigation)
+    window.addEventListener('popstate', () => {
+      const newUrl = window.location.href;
+      if (this.shouldCloseSidebarOnNavigation(newUrl)) {
+        this.closeSidebarCompletely();
+      }
+    });
 
     // Check initial video
     this.currentVideoId = this.getCurrentVideoId();
@@ -65,10 +88,30 @@ class YouTubeVideoAssistant {
       this.onVideoChange();
     }
   }
+  
+  shouldCloseSidebarOnNavigation(url) {
+    // Close sidebar when navigating to:
+    // - Channel pages: /channel/, /c/, /user/, /@
+    // - History: /feed/history
+    // - Playlists: /playlist
+    // - Other non-video pages that aren't home
+    const urlLower = url.toLowerCase();
+    const isChannel = /\/channel\/|\/c\/|\/user\/|\/@/.test(urlLower);
+    const isHistory = /\/feed\/history/.test(urlLower);
+    const isPlaylist = /\/playlist/.test(urlLower) && !/watch\?v=/.test(urlLower);
+    const isVideoPage = /\/watch\?v=/.test(urlLower);
+    // Home page is root or /feed (exactly, not /feed/history or other sub-pages)
+    const isHomePage = /^https?:\/\/(www\.)?youtube\.com\/?$/.test(urlLower) || 
+                       /^https?:\/\/(www\.)?youtube\.com\/feed\/?$/.test(urlLower);
+    
+    // Close if navigating to channel, history, or playlist (but not video pages or home)
+    // History should always close, even if it matches home pattern (it won't due to /feed/history)
+    return (isChannel || isHistory || isPlaylist) && !isVideoPage && !isHomePage;
+  }
 
   closeSidebarCompletely() {
     if (this.sidebar) {
-      // Remove class from body to restore YouTube layout
+      // Remove class from body and html to restore YouTube layout
       document.body.classList.remove('yt-assistant-active');
       document.documentElement.classList.remove('yt-assistant-active');
       this.removeLayoutStyles();
@@ -80,7 +123,7 @@ class YouTubeVideoAssistant {
       this.sidebar = null;
       this.isSidebarOpen = false;
       
-      // Remove all buttons
+      // Remove video-specific buttons (but keep header button so user can reopen)
       const playerBtn = document.getElementById('yt-assistant-player-btn');
       if (playerBtn) {
         playerBtn.remove();
@@ -96,9 +139,19 @@ class YouTubeVideoAssistant {
         toggleBtn.remove();
       }
       
+      // Keep Ask button visible and accessible - don't remove it!
+      // Just update its state
       const headerBtn = document.getElementById('yt-assistant-header-btn');
       if (headerBtn) {
-        headerBtn.remove();
+        headerBtn.classList.remove('active');
+        headerBtn.style.display = 'inline-flex';
+        headerBtn.style.visibility = 'visible';
+        headerBtn.style.opacity = '1';
+      } else {
+        // Re-add the Ask button if it's missing
+        setTimeout(() => {
+          this.addHeaderButton();
+        }, 100);
       }
     }
   }
@@ -487,40 +540,41 @@ class YouTubeVideoAssistant {
   toggleSidebar() {
     const sidebar = document.getElementById('youtube-video-assistant-sidebar');
     
-    if (sidebar) {
-      // Sidebar exists, toggle visibility
-      this.isSidebarOpen = !this.isSidebarOpen;
-      if (this.isSidebarOpen) {
-        sidebar.classList.remove('collapsed');
-        document.body.classList.add('yt-assistant-active');
-        document.documentElement.classList.add('yt-assistant-active');
-        this.applyLayoutStyles();
-      } else {
-        sidebar.classList.add('collapsed');
-        document.body.classList.remove('yt-assistant-active');
-        document.documentElement.classList.remove('yt-assistant-active');
-        this.removeLayoutStyles();
-      }
+    if (sidebar && !sidebar.classList.contains('collapsed')) {
+      // Sidebar exists and is open, close it
+      this.isSidebarOpen = false;
+      sidebar.classList.add('collapsed');
+      document.body.classList.remove('yt-assistant-active');
+      document.documentElement.classList.remove('yt-assistant-active');
+      this.removeLayoutStyles();
       
       // Update button states
       const playerBtn = document.getElementById('yt-assistant-player-btn');
       if (playerBtn) {
-        playerBtn.style.opacity = this.isSidebarOpen ? '1' : '0.7';
+        playerBtn.style.opacity = '0.7';
       }
       
+      // Ensure Ask button stays visible
       const headerBtn = document.getElementById('yt-assistant-header-btn');
       if (headerBtn) {
-        if (this.isSidebarOpen) {
-          headerBtn.classList.add('active');
-        } else {
-          headerBtn.classList.remove('active');
-        }
+        headerBtn.classList.remove('active');
+        headerBtn.style.display = 'inline-flex';
+        headerBtn.style.visibility = 'visible';
+        headerBtn.style.opacity = '1';
       }
       
-      console.log('Sidebar toggled, open:', this.isSidebarOpen);
+      console.log('Sidebar closed');
     } else {
-      // Sidebar doesn't exist, recreate it
-      console.log('Sidebar was closed, recreating...');
+      // Sidebar doesn't exist or is collapsed - always recreate it fresh for consistency
+      console.log('Opening sidebar - recreating for consistency...');
+      
+      // Remove existing sidebar if it exists
+      if (sidebar) {
+        sidebar.remove();
+        this.sidebar = null;
+      }
+      
+      // Always recreate from scratch to ensure consistency with first load
       this.createSidebar();
       this.isSidebarOpen = true;
       
@@ -530,24 +584,35 @@ class YouTubeVideoAssistant {
         playerBtn.style.opacity = '1';
       }
       
+      // Ensure Ask button is visible and active
       const headerBtn = document.getElementById('yt-assistant-header-btn');
       if (headerBtn) {
         headerBtn.classList.add('active');
+        headerBtn.style.display = 'inline-flex';
+        headerBtn.style.visibility = 'visible';
+        headerBtn.style.opacity = '1';
+      } else {
+        // Re-add button if missing
+        this.addHeaderButton();
       }
     }
   }
 
   applyLayoutStyles() {
+    // Apply the exact same styles as createSidebar() for consistency
+    // Force a reflow to ensure styles are applied
     const app = document.querySelector('ytd-app');
     if (app) {
       app.style.maxWidth = 'calc(100vw - 425px)';
       app.style.width = 'calc(100vw - 425px)';
+      console.log('Applied inline styles to ytd-app');
     }
     
     const masthead = document.querySelector('#masthead-container');
     if (masthead) {
       masthead.style.maxWidth = 'calc(100vw - 425px)';
       masthead.style.width = 'calc(100vw - 425px)';
+      console.log('Applied inline styles to masthead');
     }
     
     const pageManager = document.querySelector('#page-manager');
@@ -555,6 +620,9 @@ class YouTubeVideoAssistant {
       pageManager.style.maxWidth = 'calc(100vw - 425px)';
       pageManager.style.width = 'calc(100vw - 425px)';
     }
+    
+    // Force a reflow to ensure styles are applied
+    document.body.offsetHeight;
   }
 
   removeLayoutStyles() {
@@ -1757,14 +1825,51 @@ class SidebarManager {
     // Notify parent that sidebar is closing
     window.dispatchEvent(new CustomEvent('yt-assistant-sidebar-closed'));
     
-    // Remove class from body to restore YouTube layout
+    // Remove class from body and html to restore YouTube layout
     document.body.classList.remove('yt-assistant-active');
+    document.documentElement.classList.remove('yt-assistant-active');
+    
+    // Restore YouTube's original layout by removing inline styles
+    const app = document.querySelector('ytd-app');
+    if (app) {
+      app.style.maxWidth = '';
+      app.style.width = '';
+    }
+    
+    const masthead = document.querySelector('#masthead-container');
+    if (masthead) {
+      masthead.style.maxWidth = '';
+      masthead.style.width = '';
+    }
+    
+    const pageManager = document.querySelector('#page-manager');
+    if (pageManager) {
+      pageManager.style.maxWidth = '';
+      pageManager.style.width = '';
+    }
     
     this.container.remove();
     const toggleBtn = document.getElementById('video-assistant-toggle');
     if (toggleBtn) {
       toggleBtn.remove();
     }
+    
+    // Ensure Ask button stays visible and accessible after closing
+    setTimeout(() => {
+      const headerBtn = document.getElementById('yt-assistant-header-btn');
+      if (headerBtn) {
+        headerBtn.style.display = 'inline-flex';
+        headerBtn.style.visibility = 'visible';
+        headerBtn.style.opacity = '1';
+        headerBtn.classList.remove('active');
+      } else {
+        // Re-add the button if it was removed - use global instance
+        const assistant = window.youtubeAssistant || document.youtubeAssistant;
+        if (assistant && assistant.addHeaderButton) {
+          assistant.addHeaderButton();
+        }
+      }
+    }, 100);
   }
 
   minimizeSidebar() {
@@ -1947,8 +2052,10 @@ class SidebarManager {
 // Initialize the extension when the page loads
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    new YouTubeVideoAssistant();
+    window.youtubeAssistant = new YouTubeVideoAssistant();
+    document.youtubeAssistant = window.youtubeAssistant;
   });
 } else {
-  new YouTubeVideoAssistant();
+  window.youtubeAssistant = new YouTubeVideoAssistant();
+  document.youtubeAssistant = window.youtubeAssistant;
 }
