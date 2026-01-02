@@ -139,7 +139,6 @@ html[dark] .yt-assistant-header-icon img,
 .yt-assistant-player-button img {
   display: block !important;
   pointer-events: none !important;
-  /* No filter needed - logo_control.png already has white/transparent design */
 }
 
 .yt-assistant-player-button div {
@@ -272,306 +271,27 @@ html[dark] .yt-assistant-header-icon img,
   color: #81c784;
 }
 
-/* YouTube Layout Adjustment */
-html body.yt-assistant-active {
-  overflow-x: hidden !important;
-}
+/* ===== YOUTUBE - KEEP NORMAL (NO CHANGES) ===== */
 
-/* Force the entire page to shift left when sidebar is active */
+/* Remove all YouTube modifications - keep it normal */
 body.yt-assistant-active {
-  overflow-x: hidden !important;
+  /* YouTube stays completely normal */
 }
 
-body.yt-assistant-active > ytd-app {
-  max-width: calc(100vw - 425px) !important;
-  width: calc(100vw - 425px) !important;
-}
-
-/* Add smooth transitions to YouTube app */
-ytd-app {
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  will-change: max-width, width;
-  overflow-x: hidden !important;
-}
-
-#masthead-container {
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  will-change: max-width, width;
-  overflow-x: hidden !important;
-}
-
-/* Default: Squeeze layout for ALL pages (home, search, channels, etc.) */
-body.yt-assistant-active ytd-app {
-  max-width: calc(100vw - 425px) !important;
-  width: calc(100vw - 425px) !important;
-  margin-right: 0 !important;
-  padding-right: 0 !important;
-  box-sizing: border-box !important;
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-body.yt-assistant-active #masthead-container {
-  max-width: calc(100vw - 425px) !important;
-  width: calc(100vw - 425px) !important;
-  margin-right: 0 !important;
-  padding-right: 0 !important;
-  box-sizing: border-box !important;
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-/* Force the main content area to shift */
-body.yt-assistant-active #content {
-  max-width: calc(100vw - 425px) !important;
-  width: calc(100vw - 425px) !important;
-  margin-right: 0 !important;
-  padding-right: 0 !important;
-  box-sizing: border-box !important;
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-/* Ensure content area stays within bounds */
-body.yt-assistant-active #page-manager {
-  max-width: calc(100vw - 425px) !important;
-  width: calc(100vw - 425px) !important;
-  overflow-x: hidden !important;
-  margin-right: 0 !important;
-  padding-right: 0 !important;
-  box-sizing: border-box !important;
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-body.yt-assistant-active ytd-page-manager {
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-  margin-right: 0 !important;
-  padding-right: 0 !important;
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-/* Home page specific - ensure everything shifts left smoothly */
-body.yt-assistant-active ytd-browse[page-subtype="home"],
-body.yt-assistant-active ytd-browse {
-  max-width: 100% !important;
-  margin-right: 0 !important;
-  padding-right: 0 !important;
-  overflow-x: hidden !important;
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-body.yt-assistant-active ytd-browse #primary,
-body.yt-assistant-active ytd-browse #primary-inner {
-  max-width: 100% !important;
-  margin-right: 0 !important;
-  padding-right: 0 !important;
-  overflow-x: hidden !important;
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-body.yt-assistant-active ytd-two-column-browse-results-renderer {
-  max-width: 100% !important;
-  margin-right: 0 !important;
-  padding-right: 0 !important;
-  overflow-x: hidden !important;
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-/* Home page grid and sections */
+body.yt-assistant-active ytd-app,
+body.yt-assistant-active #masthead-container,
+body.yt-assistant-active ytd-page-manager,
+body.yt-assistant-active #page-manager,
+body.yt-assistant-active #content,
+body.yt-assistant-active ytd-browse,
 body.yt-assistant-active ytd-rich-grid-renderer,
-body.yt-assistant-active ytd-rich-item-renderer,
-body.yt-assistant-active ytd-rich-section-renderer {
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-}
-
-/* Ensure video grid items don't overflow */
 body.yt-assistant-active ytd-rich-grid-renderer #contents {
-  max-width: 100% !important;
-  overflow-x: hidden !important;
+  /* No modifications - YouTube behaves normally */
 }
 
-/* Smooth transitions for video items */
-body.yt-assistant-active ytd-rich-item-renderer {
-  transition: transform 0.2s ease !important;
-}
-
-body.yt-assistant-active ytd-rich-item-renderer:hover {
-  transform: translateY(-2px) !important;
-}
-
-/* Home page left sidebar (guide) - ensure it stays within bounds */
-body.yt-assistant-active ytd-app #guide {
-  max-width: 100% !important;
-}
-
-/* Home page main content wrapper */
-body.yt-assistant-active ytd-browse #primary #contents {
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-}
-
-/* Ensure all flex containers on home page respect boundaries */
-body.yt-assistant-active ytd-browse #primary > * {
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-}
-
-/* Home page specific: Make sure the entire layout shifts left */
-body.yt-assistant-active:has(ytd-browse[page-subtype="home"]) ytd-app {
-  transform: translateX(0) !important;
-  left: 0 !important;
-  right: auto !important;
-}
-
-/* ===== NORMAL VIDEO PAGE MODE ===== */
-/* On video pages (NOT theater mode), don't squeeze - let sidebar cover recommendations */
-body.yt-assistant-active:has(ytd-watch-flexy:not([theater]):not([fullscreen])) ytd-app {
-  max-width: 100vw !important;
-  width: 100vw !important;
-}
-
-body.yt-assistant-active:has(ytd-watch-flexy:not([theater]):not([fullscreen])) #masthead-container {
-  max-width: 100vw !important;
-  width: 100vw !important;
-}
-
-/* Hide YouTube's recommendation sidebar (our sidebar replaces it) */
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #secondary,
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #secondary-inner {
-  display: none !important;
-  visibility: hidden !important;
-  width: 0 !important;
-  min-width: 0 !important;
-}
-
-/* Keep primary column on the left, don't let it expand beyond safe zone */
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #primary,
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #primary-inner {
-  max-width: calc(100vw - 460px) !important;
-  margin-right: 0 !important;
-  flex: 1 !important;
-  overflow-x: hidden !important;
-}
-
-/* Ensure video player can render properly */
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #movie_player {
-  max-width: 100% !important;
-  width: 100% !important;
-  position: relative !important;
-}
-
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) .ytp-player-content {
-  max-width: 100% !important;
-  width: 100% !important;
-}
-
-/* Adjust columns layout for video page */
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #columns {
-  display: flex !important;
-  flex-direction: row !important;
-  justify-content: flex-start !important;
-  max-width: 100vw !important;
-}
-
-/* Constrain video player width to prevent overlap */
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #player-container,
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #player {
-  max-width: calc(100vw - 460px) !important;
-  width: 100% !important;
-}
-
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) .html5-video-container {
-  max-width: 100% !important;
-  width: 100% !important;
-}
-
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) video.html5-main-video {
-  max-width: 100% !important;
-  width: 100% !important;
-  display: block !important;
-}
-
-/* Keep video-related content (description, comments) constrained */
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #below,
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #info,
-body.yt-assistant-active ytd-watch-flexy:not([theater]):not([fullscreen]) #info-contents {
-  max-width: calc(100vw - 460px) !important;
-  overflow-x: hidden !important;
-}
-
-/* ===== THEATER/CINEMA MODE ===== */
-/* In theater mode, squeeze everything to the left */
-body.yt-assistant-active ytd-watch-flexy[theater] {
-  max-width: 100% !important;
-}
-
-body.yt-assistant-active ytd-watch-flexy[theater] #player-theater-container {
-  max-width: calc(100vw - 425px) !important;
-  width: calc(100vw - 425px) !important;
-  left: 0 !important;
-  right: auto !important;
-}
-
-body.yt-assistant-active ytd-watch-flexy[theater] #player-container,
-body.yt-assistant-active ytd-watch-flexy[theater] #movie_player {
-  max-width: calc(100vw - 425px) !important;
-  width: calc(100vw - 425px) !important;
-}
-
-body.yt-assistant-active ytd-watch-flexy[theater] .html5-video-container {
-  max-width: 100% !important;
-  width: 100% !important;
-}
-
-body.yt-assistant-active ytd-watch-flexy[theater] video.html5-main-video {
-  max-width: 100% !important;
-  width: 100% !important;
-  display: block !important;
-}
-
-/* In theater mode, show recommendations below if they exist */
-body.yt-assistant-active ytd-watch-flexy[theater] #secondary,
-body.yt-assistant-active ytd-watch-flexy[theater] #secondary-inner {
-  display: block !important;
-  visibility: visible !important;
-  max-width: calc(100vw - 425px) !important;
-}
-
-/* ===== FULLSCREEN MODE ===== */
-/* Don't interfere with fullscreen */
-body.yt-assistant-active ytd-watch-flexy[fullscreen] {
-  max-width: 100vw !important;
-}
-
-/* ===== GENERAL ADJUSTMENTS ===== */
-body.yt-assistant-active #page-manager {
-  max-width: 100% !important;
-}
-
-body.yt-assistant-active ytd-page-manager {
-  max-width: 100% !important;
-}
-
-body.yt-assistant-active #content {
-  max-width: 100% !important;
-}
-
-/* Adjust comments and description section */
-body.yt-assistant-active #below,
-body.yt-assistant-active ytd-comments {
-  max-width: 100% !important;
-}
-
-/* Adjust video metadata area */
-body.yt-assistant-active #info,
-body.yt-assistant-active #info-contents {
-  max-width: 100% !important;
-}
+/* ===== SIDEBAR AS FLOATING OVERLAY ===== */
+/* Sidebar is already position: fixed with z-index: 9999 */
+/* It floats on top of YouTube without any modifications to YouTube layout */
 
 /* Main Sidebar */
 .sidebar {
@@ -599,31 +319,6 @@ body.yt-assistant-active #info-contents {
 
 .sidebar.collapsed {
   transform: translateX(100%);
-}
-
-/* When sidebar is collapsed or not active, restore normal YouTube layout */
-body:has(.sidebar.collapsed) ytd-app,
-body:not(.yt-assistant-active) ytd-app {
-  max-width: 100vw !important;
-  width: 100vw !important;
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-body:has(.sidebar.collapsed) #masthead-container,
-body:not(.yt-assistant-active) #masthead-container {
-  max-width: 100vw !important;
-  width: 100vw !important;
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-/* Ensure no overflow when returning to normal */
-body:not(.yt-assistant-active) #page-manager,
-body:not(.yt-assistant-active) #content,
-body:not(.yt-assistant-active) #primary {
-  max-width: 100% !important;
-  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .sidebar.minimized {
@@ -659,8 +354,6 @@ body:not(.yt-assistant-active) #primary {
   background: #1a1a1a;
   border-color: #2a2a2a;
 }
-
-/* Quick actions dark theme styles removed */
 
 .sidebar.dark-theme .message-content code {
   background: rgba(255, 255, 255, 0.08);
@@ -1051,8 +744,6 @@ body:not(.yt-assistant-active) #primary {
   background: #0a0a0a;
 }
 
-/* Quick actions removed */
-
 /* Expandable Section */
 .expandable-section {
   margin-bottom: 20px;
@@ -1308,7 +999,6 @@ body:not(.yt-assistant-active) #primary {
   box-shadow: 0 0 0 3px rgba(96, 226, 27, 0.1),
               0 2px 8px rgba(0, 0, 0, 0.08);
 }
-
 
 #chat-input {
   flex: 1;
@@ -1616,14 +1306,6 @@ body:not(.yt-assistant-active) #primary {
   .sidebar {
     width: 100%;
     right: 0;
-  }
-  
-  .quick-actions {
-    grid-template-columns: 1fr;
-  }
-  
-  .quick-action-btn {
-    text-align: center;
   }
 }
 
@@ -2182,7 +1864,6 @@ body:not(.yt-assistant-active) #primary {
   align-items: center;
   font-weight: 400;
 }
-
 
 /* Dark theme for video cards */
 .sidebar.dark-theme .video-card {
