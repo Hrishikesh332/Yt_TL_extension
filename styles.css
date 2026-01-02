@@ -822,6 +822,46 @@ body:not(.yt-assistant-active) #masthead-container {
   border-color: #2a2a2a;
 }
 
+/* Video Indexed Status Card */
+.video-indexed-status {
+  max-width: 90%;
+  margin: 16px 0;
+  align-self: flex-start;
+}
+
+.status-card-content {
+  border-left: 3px solid #10b981;
+  padding: 12px 16px;
+  background: transparent;
+}
+
+.status-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  line-height: 1.4;
+}
+
+.sidebar.dark-theme .status-title {
+  color: #e5e5e5;
+}
+
+.status-description {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.sidebar.dark-theme .status-description {
+  color: #9ca3af;
+}
+
 .typing-dots {
   display: flex;
   gap: 6px;

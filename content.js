@@ -1236,6 +1236,7 @@ class SidebarManager {
         console.log('Video already indexed, ID:', existingVideoId);
         this.videoIndexed = true;
         this.hideLoadingMessage();
+        this.showVideoIndexedStatus(true); // Show UI for already indexed
         this.enableInput();
         return;
       }
@@ -1251,7 +1252,7 @@ class SidebarManager {
       console.log('Video indexing complete:', response);
       this.videoIndexed = true;
       this.hideLoadingMessage();
-      this.addMessage('assistant', '✅ Video indexed successfully! You can now ask questions, get summaries, or search for specific content.');
+      this.showVideoIndexedStatus(false); // Show UI for newly indexed
       this.enableInput();
       
     } catch (error) {
@@ -1629,6 +1630,46 @@ class SidebarManager {
     
     // Add click handlers to timestamp buttons
     this.attachTimestampHandlers(messageDiv);
+  }
+
+  showVideoIndexedStatus(isAlreadyIndexed) {
+    // Remove welcome message if it exists
+    const welcomeMessage = this.chatMessages.querySelector('.welcome-message');
+    if (welcomeMessage) {
+      welcomeMessage.remove();
+    }
+
+    // Remove any existing video status card
+    const existingStatus = this.chatMessages.querySelector('.video-indexed-status');
+    if (existingStatus) {
+      existingStatus.remove();
+    }
+
+    const statusCard = document.createElement('div');
+    statusCard.className = 'video-indexed-status';
+    
+    if (isAlreadyIndexed) {
+      statusCard.innerHTML = `
+        <div class="status-card-content">
+          <div class="status-text">
+            <div class="status-title">Video Ready</div>
+            <div class="status-description">This video is indexed and ready for analysis.</div>
+          </div>
+        </div>
+      `;
+    } else {
+      statusCard.innerHTML = `
+        <div class="status-card-content">
+          <div class="status-text">
+            <div class="status-title">Video Indexed</div>
+            <div class="status-description">Your video has been processed and is ready for analysis.</div>
+          </div>
+        </div>
+      `;
+    }
+
+    this.chatMessages.appendChild(statusCard);
+    this.scrollToBottom();
   }
 
   attachTimestampHandlers(messageDiv) {
