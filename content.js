@@ -215,6 +215,16 @@ class YouTubeVideoAssistant {
     sidebarContainer.id = 'youtube-video-assistant-sidebar';
     sidebarContainer.innerHTML = `
       <div class="sidebar-top-buttons">
+        <button class="videos-dropdown-btn" id="videos-dropdown-btn" title="Gallery">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+            <line x1="15" y1="3" x2="15" y2="21"></line>
+            <line x1="3" y1="9" x2="21" y2="9"></line>
+            <line x1="3" y1="15" x2="21" y2="15"></line>
+          </svg>
+          <span>Gallery</span>
+        </button>
         <button class="dark-mode-toggle-btn" title="Toggle Dark Mode">
           <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="5"></circle>
@@ -238,6 +248,23 @@ class YouTubeVideoAssistant {
           </svg>
         </button>
       </div>
+      <div class="videos-dropdown" id="videos-dropdown" style="display: none;">
+        <div class="videos-dropdown-header">
+          <h3>Select to analyze</h3>
+          <button class="videos-dropdown-close" id="videos-dropdown-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="videos-list" id="videos-list">
+          <div class="videos-loading">Loading videos...</div>
+        </div>
+        <div class="videos-load-more-container" id="videos-load-more-container" style="display: none;">
+          <button class="videos-load-more-btn" id="videos-load-more-btn">Load More</button>
+        </div>
+      </div>
       <div class="sidebar-body">
         <div class="chat-messages" id="chat-messages">
           <div class="welcome-message">
@@ -248,7 +275,6 @@ class YouTubeVideoAssistant {
         </div>
       </div>
       <div class="sidebar-footer">
-        
         <div class="expandable-section">
           <div class="expandable-trigger" id="expandable-trigger">
             <span class="expandable-text">Try our suggested prompts with your selected video</span>
@@ -265,6 +291,22 @@ class YouTubeVideoAssistant {
           </div>
         </div>
         <div class="input-container">
+          <div class="selected-video-display" id="selected-video-display" style="display: none;">
+            <div class="selected-video-content">
+              <div class="selected-video-thumbnail">
+                <img id="selected-video-thumbnail-img" src="" alt="Selected video" />
+              </div>
+              <div class="selected-video-info">
+                <div class="selected-video-title" id="selected-video-title">Video Title</div>
+              </div>
+              <button class="selected-video-close" id="selected-video-close" title="Unselect video">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
           <div class="textarea-wrapper">
             <textarea id="chat-input" placeholder="Ask any question..." rows="1"></textarea>
             <button id="send-btn" class="send-btn-inside">
@@ -742,6 +784,46 @@ class SidebarManager {
       this.closeSidebar();
     });
 
+    // Videos dropdown button
+    const videosDropdownBtn = this.container.querySelector('#videos-dropdown-btn');
+    const videosDropdown = this.container.querySelector('#videos-dropdown');
+    const videosDropdownClose = this.container.querySelector('#videos-dropdown-close');
+    
+    if (videosDropdownBtn) {
+      videosDropdownBtn.addEventListener('click', () => {
+        this.toggleVideosDropdown();
+      });
+    }
+    
+    if (videosDropdownClose) {
+      videosDropdownClose.addEventListener('click', () => {
+        this.closeVideosDropdown();
+      });
+    }
+
+    // Load more button
+    const loadMoreBtn = this.container.querySelector('#videos-load-more-btn');
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener('click', () => {
+        this.loadMoreVideos();
+      });
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const videosDropdown = this.container.querySelector('#videos-dropdown');
+      const videosDropdownBtn = this.container.querySelector('#videos-dropdown-btn');
+      
+      if (videosDropdown && videosDropdown.style.display !== 'none') {
+        const isClickInside = videosDropdown.contains(e.target) || 
+                             (videosDropdownBtn && videosDropdownBtn.contains(e.target));
+        
+        if (!isClickInside) {
+          this.closeVideosDropdown();
+        }
+      }
+    });
+
     // Expandable section
     this.expandBtn = this.container.querySelector('#expand-btn');
     this.expandableContent = this.container.querySelector('#expandable-content');
@@ -883,7 +965,9 @@ class SidebarManager {
       welcomeMessage.remove();
     }
 
-    this.addMessage('user', message);
+    // Include selected video info if available
+    const selectedVideo = this.selectedVideo;
+    this.addMessage('user', message, selectedVideo);
     this.chatInput.value = '';
     this.chatInput.style.height = 'auto';
     
@@ -1061,6 +1145,60 @@ class SidebarManager {
   }
 
   async processMessage(message) {
+    // Check if a video is selected from gallery
+    if (this.selectedVideo && this.selectedVideo.id) {
+      // Use analyze API with selected video
+      this.updateLoadingMessage('Analyzing selected video...');
+      
+      try {
+        // Set up streaming - message will be created when first chunk arrives
+        this.currentStreamingMessageId = `streaming-${Date.now()}`;
+        this.isStreaming = true;
+        
+        // Call analyze API - streaming will be handled by existing message listener
+        const response = await chrome.runtime.sendMessage({
+          action: 'analyzeVideo',
+          videoId: this.selectedVideo.id,
+          type: 'open-ended',
+          customPrompt: message
+        });
+        
+        // Finalize streaming message (if it was created by updateStreamingResponse)
+        const streamingMsgFinal = document.getElementById(this.currentStreamingMessageId);
+        if (streamingMsgFinal) {
+          const textContainer = streamingMsgFinal.querySelector('.streaming-text');
+          const rawText = textContainer ? textContainer.textContent : (response.result || '');
+          
+          const cursor = streamingMsgFinal.querySelector('.streaming-cursor');
+          if (cursor) {
+            cursor.remove();
+          }
+          
+          const messageContent = streamingMsgFinal.querySelector('.message-content');
+          if (messageContent) {
+            messageContent.innerHTML = this.formatMessageContent(rawText || response.result || '');
+          }
+          
+          streamingMsgFinal.classList.remove('streaming');
+          streamingMsgFinal.classList.add('assistant-message');
+        } else if (response && response.result) {
+          // If no streaming occurred but we have a result, show it normally
+          this.addMessage('assistant', response.result);
+        }
+        
+        this.currentStreamingMessageId = null;
+        this.isStreaming = false;
+        
+        // Return null to prevent sendMessage from processing again
+        return null;
+      } catch (error) {
+        console.error('Error analyzing selected video:', error);
+        this.currentStreamingMessageId = null;
+        this.isStreaming = false;
+        throw error;
+      }
+    }
+    
     // Check if we're on a video page
     if (!this.videoId) {
       // Not on a video page - use agentic chat API
@@ -1610,7 +1748,7 @@ class SidebarManager {
     }
   }
 
-  addMessage(sender, content) {
+  addMessage(sender, content, selectedVideo = null) {
     // Don't add message if content is null, undefined, or empty
     if (!content || content === 'null' || content === null || content === undefined) {
       return;
@@ -1620,8 +1758,28 @@ class SidebarManager {
     messageDiv.className = `message ${sender}-message`;
     
     const timestamp = new Date().toLocaleTimeString();
+    
+    // If user message with selected video, include video info
+    let messageHTML = '';
+    if (sender === 'user' && selectedVideo) {
+      const videoTitle = this.extractVideoTitle(selectedVideo);
+      const thumbnailUrl = selectedVideo.thumbnail_url || '';
+      
+      messageHTML = `
+        <div class="message-video-context">
+          <div class="message-video-thumbnail">
+            ${thumbnailUrl ? `<img src="${thumbnailUrl}" alt="${videoTitle}" />` : '<div class="message-video-thumbnail-placeholder">No Image</div>'}
+          </div>
+          <div class="message-video-title">${videoTitle}</div>
+        </div>
+        <div class="message-content">${this.formatMessageContent(content)}</div>
+      `;
+    } else {
+      messageHTML = `<div class="message-content">${this.formatMessageContent(content)}</div>`;
+    }
+    
     messageDiv.innerHTML = `
-      <div class="message-content">${this.formatMessageContent(content)}</div>
+      ${messageHTML}
       <div class="message-time">${timestamp}</div>
     `;
 
@@ -2087,6 +2245,330 @@ class SidebarManager {
       default:
         return 'Processing...';
     }
+  }
+
+  toggleVideosDropdown() {
+    const videosDropdown = this.container.querySelector('#videos-dropdown');
+    if (!videosDropdown) return;
+
+    const isVisible = videosDropdown.style.display !== 'none';
+    
+    if (isVisible) {
+      this.closeVideosDropdown();
+    } else {
+      this.openVideosDropdown();
+    }
+  }
+
+  openVideosDropdown() {
+    const videosDropdown = this.container.querySelector('#videos-dropdown');
+    if (!videosDropdown) return;
+
+    videosDropdown.style.display = 'block';
+    this.videosPage = 1;
+    this.videosLimit = 5;
+    this.videosHasMore = true;
+    this.loadVideos();
+  }
+
+  closeVideosDropdown() {
+    const videosDropdown = this.container.querySelector('#videos-dropdown');
+    if (videosDropdown) {
+      videosDropdown.style.display = 'none';
+    }
+  }
+
+  async loadVideos() {
+    const videosList = this.container.querySelector('#videos-list');
+    const loadMoreContainer = this.container.querySelector('#videos-load-more-container');
+    
+    if (!videosList) return;
+
+    try {
+      videosList.innerHTML = '<div class="videos-loading">Loading videos...</div>';
+
+      const response = await chrome.runtime.sendMessage({
+        action: 'listVideos',
+        page: this.videosPage || 1,
+        limit: this.videosLimit || 5
+      });
+
+      if (response.error) {
+        videosList.innerHTML = `<div class="videos-error">Error: ${response.error}</div>`;
+        return;
+      }
+
+      this.videosHasMore = response.has_more || false;
+      this.renderVideos(response.videos || [], response.has_more || false);
+
+      // Show/hide load more button
+      if (loadMoreContainer) {
+        loadMoreContainer.style.display = this.videosHasMore ? 'block' : 'none';
+      }
+    } catch (error) {
+      console.error('Error loading videos:', error);
+      videosList.innerHTML = `<div class="videos-error">Error loading videos: ${error.message}</div>`;
+    }
+  }
+
+  async loadMoreVideos() {
+    if (!this.videosHasMore) return;
+
+    const videosList = this.container.querySelector('#videos-list');
+    const loadMoreBtn = this.container.querySelector('#videos-load-more-btn');
+    
+    if (!videosList || !loadMoreBtn) return;
+
+    try {
+      loadMoreBtn.disabled = true;
+      loadMoreBtn.textContent = 'Loading...';
+
+      this.videosPage = (this.videosPage || 1) + 1;
+
+      const response = await chrome.runtime.sendMessage({
+        action: 'listVideos',
+        page: this.videosPage,
+        limit: this.videosLimit || 5
+      });
+
+      if (response.error) {
+        loadMoreBtn.disabled = false;
+        loadMoreBtn.textContent = 'Load More';
+        console.error('Error loading more videos:', response.error);
+        return;
+      }
+
+      this.videosHasMore = response.has_more || false;
+      const existingVideos = Array.from(videosList.querySelectorAll('.video-list-item'));
+      const newVideos = response.videos || [];
+      
+      // Append new videos
+      newVideos.forEach(video => {
+        const videoElement = this.createVideoListItem(video);
+        videosList.appendChild(videoElement);
+      });
+
+      // Update load more button
+      const loadMoreContainer = this.container.querySelector('#videos-load-more-container');
+      if (loadMoreContainer) {
+        loadMoreContainer.style.display = this.videosHasMore ? 'block' : 'none';
+      }
+
+      loadMoreBtn.disabled = false;
+      loadMoreBtn.textContent = 'Load More';
+      
+      // Scroll to show the newly loaded videos
+      setTimeout(() => {
+        const lastItem = videosList.lastElementChild;
+        if (lastItem && lastItem.classList.contains('video-list-item')) {
+          lastItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Error loading more videos:', error);
+      loadMoreBtn.disabled = false;
+      loadMoreBtn.textContent = 'Load More';
+    }
+  }
+
+  renderVideos(videos, hasMore) {
+    const videosList = this.container.querySelector('#videos-list');
+    const loadMoreContainer = this.container.querySelector('#videos-load-more-container');
+    
+    if (!videosList) return;
+
+    if (videos.length === 0) {
+      videosList.innerHTML = '<div class="videos-empty">No videos found in the index.</div>';
+      if (loadMoreContainer) {
+        loadMoreContainer.style.display = 'none';
+      }
+      return;
+    }
+
+    videosList.innerHTML = '';
+    videos.forEach(video => {
+      const videoElement = this.createVideoListItem(video);
+      videosList.appendChild(videoElement);
+    });
+
+    if (loadMoreContainer) {
+      loadMoreContainer.style.display = hasMore ? 'block' : 'none';
+    }
+  }
+
+  createVideoListItem(video) {
+    const item = document.createElement('div');
+    item.className = 'video-list-item';
+    item.dataset.videoId = video.id || '';
+    item.dataset.youtubeUrl = video.youtube_url || '';
+    
+    // Extract video title from name or use YouTube URL
+    const videoTitle = this.extractVideoTitle(video);
+    const thumbnailUrl = video.thumbnail_url || '';
+    const youtubeUrl = video.youtube_url || '';
+    const duration = video.duration ? this.formatDuration(video.duration) : '';
+
+    item.innerHTML = `
+      <div class="video-list-item-thumbnail">
+        ${thumbnailUrl ? `<img src="${thumbnailUrl}" alt="${videoTitle}" loading="lazy" />` : '<div class="video-list-item-thumbnail-placeholder">No Image</div>'}
+        ${duration ? `<div class="video-list-item-duration">${duration}</div>` : ''}
+      </div>
+      <div class="video-list-item-content">
+        <div class="video-list-item-title">${videoTitle}</div>
+        ${youtubeUrl ? `<div class="video-list-item-url">${youtubeUrl}</div>` : ''}
+      </div>
+      ${youtubeUrl ? `<div class="video-list-item-action">
+        <button class="video-list-item-go-btn" title="Go to video">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </button>
+      </div>` : ''}
+    `;
+
+    // Add click handler to select the video (not redirect)
+    item.style.cursor = 'pointer';
+    item.addEventListener('click', (e) => {
+      // Don't select if clicking the go button
+      if (e.target.closest('.video-list-item-go-btn')) {
+        return;
+      }
+      e.preventDefault();
+      this.selectVideoListItem(item, video);
+    });
+
+    // Add click handler for the go button to navigate
+    const goBtn = item.querySelector('.video-list-item-go-btn');
+    if (goBtn && youtubeUrl) {
+      goBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.location.href = youtubeUrl;
+      });
+    }
+
+    return item;
+  }
+
+  selectVideoListItem(item, video) {
+    // Remove selected state from all items
+    const allItems = this.container.querySelectorAll('.video-list-item');
+    allItems.forEach(i => i.classList.remove('selected'));
+    
+    // Add selected state to clicked item
+    item.classList.add('selected');
+    
+    // Store selected video
+    this.selectedVideo = video;
+    
+    // Close the videos dropdown
+    this.closeVideosDropdown();
+    
+    // Show selected video in chat section
+    this.showSelectedVideoInChat(video);
+    
+    // Optional: Scroll the selected item into view
+    item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  showSelectedVideoInChat(video) {
+    const selectedVideoDisplay = this.container.querySelector('#selected-video-display');
+    const thumbnailImg = this.container.querySelector('#selected-video-thumbnail-img');
+    const titleEl = this.container.querySelector('#selected-video-title');
+    const closeBtn = this.container.querySelector('#selected-video-close');
+    
+    if (!selectedVideoDisplay) return;
+    
+    // Update content
+    const videoTitle = this.extractVideoTitle(video);
+    const thumbnailUrl = video.thumbnail_url || '';
+    
+    if (thumbnailImg) {
+      if (thumbnailUrl) {
+        thumbnailImg.src = thumbnailUrl;
+        thumbnailImg.style.display = 'block';
+      } else {
+        thumbnailImg.style.display = 'none';
+      }
+    }
+    
+    if (titleEl) {
+      titleEl.textContent = videoTitle;
+    }
+    
+    // Show the display
+    selectedVideoDisplay.style.display = 'block';
+    
+    // Add click handler for close button if not already added
+    if (closeBtn && !closeBtn.dataset.handlerAdded) {
+      closeBtn.dataset.handlerAdded = 'true';
+      closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.unselectVideo();
+      });
+    }
+  }
+
+  unselectVideo() {
+    // Remove selected state from all items
+    const allItems = this.container.querySelectorAll('.video-list-item');
+    allItems.forEach(i => i.classList.remove('selected'));
+    
+    // Clear selected video - this ensures processMessage will use agentic chat
+    this.selectedVideo = null;
+    
+    // Hide selected video display
+    const selectedVideoDisplay = this.container.querySelector('#selected-video-display');
+    if (selectedVideoDisplay) {
+      selectedVideoDisplay.style.display = 'none';
+    }
+    
+    // Restore textarea wrapper border styling
+    const textareaWrapper = this.container.querySelector('.textarea-wrapper');
+    if (textareaWrapper) {
+      textareaWrapper.style.borderTop = '';
+      textareaWrapper.style.borderColor = '';
+      textareaWrapper.style.borderRadius = '16px';
+      textareaWrapper.style.boxShadow = '';
+    }
+  }
+
+  extractVideoTitle(video) {
+    // Try to get title from YouTube URL if available
+    if (video.youtube_url) {
+      // Extract video ID from URL
+      const videoIdMatch = video.youtube_url.match(/[?&]v=([^&]+)/);
+      if (videoIdMatch) {
+        const videoId = videoIdMatch[1];
+        // Try to get title from YouTube page if possible, otherwise use video ID
+        return `Video ${videoId}`;
+      }
+    }
+    
+    // Try to extract title from name (format: yt_{video_id}_{unique_id}.mp4)
+    if (video.name) {
+      const match = video.name.match(/yt_([^_]+)/);
+      if (match) {
+        return `Video ${match[1]}`;
+      }
+      return video.name.replace('.mp4', '');
+    }
+    
+    return 'Untitled Video';
+  }
+
+  formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
   }
 }
 

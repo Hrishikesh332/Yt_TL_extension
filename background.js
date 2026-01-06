@@ -50,6 +50,10 @@ class BackgroundService {
           this.agenticChatStream(request.query, request.conversationContext, sender.tab.id).then(sendResponse);
           return true;
           
+        case 'listVideos':
+          this.listVideos(request.page, request.limit).then(sendResponse);
+          return true;
+          
         case 'test':
           console.log('Background: Received test message');
           sendResponse({status: 'ok', timestamp: Date.now()});
@@ -541,6 +545,43 @@ class BackgroundService {
       };
     } catch (error) {
       console.error('Agentic chat streaming error:', error);
+      throw error;
+    }
+  }
+
+  async listVideos(page = 1, limit = 5) {
+    try {
+      const backendUrl = await this.getBackendUrl();
+      if (!backendUrl) {
+        throw new Error('Backend URL not configured');
+      }
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
+
+      const response = await fetch(`${backendUrl}/api/list-videos?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `Backend request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('List videos error:', error);
       throw error;
     }
   }
