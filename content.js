@@ -241,7 +241,7 @@ class YouTubeVideoAssistant {
       <div class="sidebar-body">
         <div class="chat-messages" id="chat-messages">
           <div class="welcome-message">
-            <p>👋 Hi! I'm your YouTube Assistant.</p>
+            <p>👋 Hi! I'm your TwelveLabs Video Assistant.</p>
             <p>I can help you find videos, index them for analysis, and answer questions about videos.</p>
             <p><strong>Try asking:</strong> "Find videos about machine learning" or "Search for Python tutorials"</p>
           </div>
@@ -1991,7 +1991,7 @@ class SidebarManager {
     const welcomeDiv = document.createElement('div');
     welcomeDiv.className = 'welcome-message';
     welcomeDiv.innerHTML = `
-      <p>👋 Hi! I'm your YouTube Assistant.</p>
+      <p>👋 Hi! I'm your TwelveLabs Video Assistant.</p>
       <p>I can help you find videos, index them for analysis, and answer questions about videos.</p>
     `;
     this.chatMessages.appendChild(welcomeDiv);
