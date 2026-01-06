@@ -299,6 +299,13 @@ class YouTubeVideoAssistant {
               <div class="selected-video-info">
                 <div class="selected-video-title" id="selected-video-title">Video Title</div>
               </div>
+              <button class="selected-video-go-btn" id="selected-video-go-btn" title="Go to video" style="display: none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+              </button>
               <button class="selected-video-close" id="selected-video-close" title="Unselect video">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -1063,6 +1070,13 @@ class SidebarManager {
   }
 
   updateStreamingResponse(chunk, fullText, foundVideos) {
+    // Check if this is an indexing request - if so, don't display streaming content
+    // The currentStreamingMessageId will be null for indexing requests after they're handled
+    if (!this.currentStreamingMessageId) {
+      console.log('Skipping streaming update for indexing request');
+      return;
+    }
+    
     // Hide loading message when first chunk arrives
     this.hideLoadingMessage();
     
@@ -1101,29 +1115,28 @@ class SidebarManager {
     this.scrollToBottom();
   }
 
-  createVideoCards(videos) {
+  createVideoCards(videos, isIndexing = false) {
     const container = document.createElement('div');
     container.className = 'video-cards-container';
     
     const instructionText = document.createElement('div');
     instructionText.className = 'video-cards-instruction';
-    instructionText.textContent = 'Click on the video to chat with';
+    instructionText.textContent = isIndexing ? 'Please wait for indexing to complete before selecting videos' : 'Click on the video to chat with';
     container.appendChild(instructionText);
     
-    videos.forEach((video, index) => {
-      const card = document.createElement('a');
-      card.href = video.url;
-      // Open in same tab (remove target="_blank")
+      videos.forEach((video, index) => {
+      const card = document.createElement('div');
       card.className = 'video-card';
+      if (isIndexing) {
+        card.classList.add('disabled');
+      }
       card.title = video.title || 'Watch video';
-      
-      // Add click handler to navigate in same tab
-      card.addEventListener('click', (e) => {
-        e.preventDefault();
-        window.location.href = video.url;
-      });
+      // Store video data for later use
+      card.dataset.videoUrl = video.url || '';
+      card.dataset.videoTitle = video.title || 'Untitled Video';
       
       const thumbnailUrl = video.thumbnail || video.Thumbnail || video.thumbnailUrl || '';
+      const videoUrl = video.url || '';
       
       card.innerHTML = `
         <div class="video-card-thumbnail">
@@ -1136,7 +1149,56 @@ class SidebarManager {
             ${video.channelName ? `<span class="video-card-channel">${video.channelName}</span>` : ''}
           </div>
         </div>
+        ${videoUrl ? `<div class="video-card-action">
+          <button class="video-card-go-btn" title="Go to video">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </button>
+        </div>` : ''}
       `;
+      
+      // Store video data on card for later use
+      card.dataset.videoData = JSON.stringify(video);
+      
+      // Add click handler to select the video (not redirect) - only if not indexing
+      if (!isIndexing) {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', (e) => {
+          // Don't select if clicking the go button or if card is disabled
+          if (e.target.closest('.video-card-go-btn') || card.classList.contains('disabled')) {
+            return;
+          }
+          e.preventDefault();
+          this.selectVideoCard(card, video);
+        });
+      } else {
+        card.style.cursor = 'not-allowed';
+        card.style.opacity = '0.6';
+        // Add click handler that checks for disabled state
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.video-card-go-btn')) {
+            return;
+          }
+          if (card.classList.contains('disabled')) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+        });
+      }
+      
+      // Add click handler for the go button to navigate (always enabled)
+      const goBtn = card.querySelector('.video-card-go-btn');
+      if (goBtn && videoUrl) {
+        goBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          window.location.href = videoUrl;
+        });
+      }
       
       container.appendChild(card);
     });
@@ -1144,9 +1206,425 @@ class SidebarManager {
     return container;
   }
 
+  selectVideoCard(card, video) {
+    // Check if video has an ID - if not, don't allow selection
+    if (!video.id) {
+      console.warn('Cannot select video: video ID not available. Video may not be indexed yet.', video);
+      return;
+    }
+    
+    // Remove selected state from all cards
+    const allCards = this.container.querySelectorAll('.video-card');
+    allCards.forEach(c => c.classList.remove('selected'));
+    
+    // Add selected state to clicked card
+    card.classList.add('selected');
+    
+    // Store selected video - need to map video data to expected format
+    // Ensure the video ID is properly associated
+    const selectedVideoData = {
+      id: video.id, // This is the TwelveLabs video ID needed for analysis
+      youtube_url: video.url || video.youtube_url || '',
+      thumbnail_url: video.thumbnail || video.Thumbnail || video.thumbnailUrl || video.thumbnail_url || '',
+      title: video.title || 'Untitled Video'
+    };
+    
+    // Log to verify video ID is present
+    console.log('Video card selected with ID:', selectedVideoData.id, 'for video:', selectedVideoData.title);
+    
+    this.selectedVideo = selectedVideoData;
+    
+    // Show selected video in chat section (text area)
+    this.showSelectedVideoInChat(selectedVideoData);
+  }
+
+  createIndexVideoButton(foundVideos) {
+    const button = document.createElement('button');
+    button.className = 'video-cards-question-btn';
+    button.textContent = 'Would you like to index and talk to video?';
+    
+    button.addEventListener('click', async () => {
+      // Format found_videos to match the API format
+      const formattedVideos = foundVideos.map(video => ({
+        channelName: video.channelName || video.channel || '',
+        duration: video.duration || null,
+        thumbnailUrl: video.thumbnail || video.Thumbnail || video.thumbnailUrl || '',
+        title: video.title || 'Untitled Video',
+        url: video.url || ''
+      }));
+      
+      // Add user message showing "index them"
+      this.addMessage('user', 'index them');
+      
+      // Disable button during processing
+      button.disabled = true;
+      button.textContent = 'Indexing...';
+      
+      // Disable all video cards during indexing
+      const allCards = this.container.querySelectorAll('.video-card');
+      allCards.forEach(card => {
+        card.classList.add('disabled');
+        card.style.cursor = 'not-allowed';
+        card.style.opacity = '0.6';
+        // Remove click handlers temporarily
+        card.dataset.originalCursor = card.style.cursor;
+      });
+      
+      // Update instruction text
+      const instructionText = this.container.querySelector('.video-cards-instruction');
+      if (instructionText) {
+        instructionText.textContent = 'Please wait for indexing to complete before selecting videos';
+      }
+      
+      try {
+        // Show loading message for indexing
+        this.showLoadingMessage('Indexing videos, this may take a few minutes...');
+        
+        // Call agenticChat with "index them" and found_videos in conversation_context
+        // This will trigger indexing but NOT analysis
+        const response = await this.agenticChatWithContext('index them', {
+          found_videos: formattedVideos
+        });
+        
+        // After indexing completes, show success message and wait for user query
+        this.hideLoadingMessage();
+        this.addMessage('assistant', 'Videos have been indexed successfully! You can now ask questions about them.');
+        
+        // Check if response includes indexed_videos with video IDs
+        let videosWithIds = [];
+        
+        if (response && response.indexed_videos && Array.isArray(response.indexed_videos)) {
+          // Use video IDs from the response if available
+          console.log('Using video IDs from indexing response:', response.indexed_videos);
+          videosWithIds = formattedVideos.map(video => {
+            const indexedVideo = response.indexed_videos.find(iv => {
+              const videoUrl = video.url || '';
+              const indexedUrl = iv.youtube_url || iv.url || '';
+              // Normalize URLs for comparison
+              const normalizeUrl = (url) => url.replace(/\/$/, '').toLowerCase();
+              return normalizeUrl(videoUrl) === normalizeUrl(indexedUrl) || 
+                     videoUrl === indexedUrl ||
+                     (videoUrl && indexedUrl && videoUrl.includes(indexedUrl.split('?')[0])) ||
+                     (indexedUrl && videoUrl && indexedUrl.includes(videoUrl.split('?')[0]));
+            });
+            
+            return {
+              ...video,
+              id: indexedVideo ? (indexedVideo.id || indexedVideo.video_id) : null
+            };
+          });
+        } else {
+          // Wait a moment for video IDs to be stored in the backend
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Fetch video IDs for all indexed videos with retry logic
+          const videoIdPromises = formattedVideos.map(async (video) => {
+            let retries = 3;
+            let videoId = null;
+            
+            while (retries > 0 && !videoId) {
+              try {
+                videoId = await chrome.runtime.sendMessage({
+                  action: 'getVideoId',
+                  videoUrl: video.url
+                });
+                
+                if (!videoId) {
+                  retries--;
+                  if (retries > 0) {
+                    console.log(`Video ID not found for ${video.url}, retrying... (${retries} attempts left)`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                  }
+                }
+              } catch (error) {
+                console.error(`Error fetching video ID for ${video.url}:`, error);
+                retries--;
+                if (retries > 0) {
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+              }
+            }
+            
+            return { ...video, id: videoId };
+          });
+          
+          videosWithIds = await Promise.all(videoIdPromises);
+        }
+        
+        console.log('Videos with IDs after indexing:', videosWithIds);
+        
+        // Re-query for cards to ensure we have the latest DOM elements
+        const currentCards = this.container.querySelectorAll('.video-card');
+        console.log(`Found ${currentCards.length} video cards to update`);
+        
+        // Re-enable video cards only if they have video IDs
+        currentCards.forEach((card, index) => {
+          const videoDataStr = card.dataset.videoData;
+          if (videoDataStr) {
+            try {
+              const originalVideo = JSON.parse(videoDataStr);
+              console.log(`Processing card ${index + 1}:`, originalVideo.title || originalVideo.url);
+              
+              // Find the corresponding video with ID - try multiple URL formats
+              const videoWithId = videosWithIds.find(v => {
+                const originalUrl = originalVideo.url || '';
+                const foundUrl = v.url || '';
+                // Normalize URLs for comparison
+                const normalizeUrl = (url) => url.replace(/\/$/, '').toLowerCase();
+                return normalizeUrl(originalUrl) === normalizeUrl(foundUrl) || 
+                       originalUrl === foundUrl ||
+                       (originalUrl && foundUrl && originalUrl.includes(foundUrl.split('?')[0])) ||
+                       (foundUrl && originalUrl && foundUrl.includes(originalUrl.split('?')[0]));
+              });
+              
+              if (videoWithId && videoWithId.id) {
+                // Video has been indexed and has an ID - enable selection
+                const updatedVideo = {
+                  ...originalVideo,
+                  id: videoWithId.id // Ensure the TwelveLabs video ID is included
+                };
+                
+                // Verify video ID is present
+                console.log('✓ Enabling video card with ID:', updatedVideo.id, 'for video:', updatedVideo.title || updatedVideo.url);
+                
+                // Remove old click listeners by cloning
+                const clonedCard = card.cloneNode(true);
+                clonedCard.classList.remove('disabled');
+                clonedCard.style.cursor = 'pointer';
+                clonedCard.style.opacity = '1';
+                clonedCard.style.pointerEvents = 'auto';
+                clonedCard.dataset.videoUrl = updatedVideo.url || '';
+                clonedCard.dataset.videoTitle = updatedVideo.title || '';
+                clonedCard.dataset.videoData = JSON.stringify(updatedVideo);
+                
+                // Create click handler that uses the updated video with ID
+                const newClickHandler = (e) => {
+                  if (e.target.closest('.video-card-go-btn')) {
+                    return;
+                  }
+                  if (clonedCard.classList.contains('disabled')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                  }
+                  e.preventDefault();
+                  // Pass the updated video with ID to selectVideoCard
+                  this.selectVideoCard(clonedCard, updatedVideo);
+                };
+                
+                clonedCard.addEventListener('click', newClickHandler);
+                
+                // Re-add go button handler
+                const goBtn = clonedCard.querySelector('.video-card-go-btn');
+                if (goBtn && updatedVideo.url) {
+                  goBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.location.href = updatedVideo.url;
+                  });
+                }
+                
+                card.parentNode.replaceChild(clonedCard, card);
+                console.log('✓ Card replaced and enabled successfully');
+              } else {
+                // Video doesn't have an ID yet - keep it disabled
+                console.warn('✗ Video ID not found for card:', originalVideo.title || originalVideo.url);
+                card.classList.add('disabled');
+                card.style.cursor = 'not-allowed';
+                card.style.opacity = '0.6';
+                card.style.pointerEvents = 'none';
+              }
+            } catch (e) {
+              console.error('Error parsing video data:', e);
+              // Keep disabled on error
+              card.classList.add('disabled');
+              card.style.cursor = 'not-allowed';
+              card.style.opacity = '0.6';
+              card.style.pointerEvents = 'none';
+            }
+          } else {
+            console.warn(`Card ${index + 1} has no video data stored`);
+          }
+        });
+        
+        // Update instruction text
+        if (instructionText) {
+          instructionText.textContent = 'Click on the video to chat with';
+        }
+        
+        // Re-enable button (change text to indicate completion)
+        button.disabled = false;
+        button.textContent = 'Indexed ✓';
+        button.style.opacity = '0.7';
+        button.style.cursor = 'default';
+      } catch (error) {
+        console.error('Error indexing videos:', error);
+        button.disabled = false;
+        button.textContent = 'Would you like to index and talk to video?';
+        this.hideLoadingMessage();
+        this.addMessage('assistant', `Sorry, I encountered an error: ${error.message}. Please try again.`);
+        
+        // Keep cards disabled on error - they don't have IDs yet
+        allCards.forEach(card => {
+          card.classList.add('disabled');
+          card.style.cursor = 'not-allowed';
+          card.style.opacity = '0.6';
+        });
+        if (instructionText) {
+          instructionText.textContent = 'Please wait for indexing to complete before selecting videos';
+        }
+      }
+    });
+    
+    return button;
+  }
+
+  async agenticChatWithContext(query, conversationContext = {}) {
+    try {
+      // Remove welcome message if it exists
+      const welcomeMessage = this.chatMessages.querySelector('.welcome-message');
+      if (welcomeMessage) {
+        welcomeMessage.remove();
+      }
+
+      // Create a streaming message ID for this request
+      this.currentStreamingMessageId = `streaming-${Date.now()}`;
+      this.isStreaming = true;
+
+      // Use streaming endpoint for real-time updates
+      const response = await chrome.runtime.sendMessage({
+        action: 'agenticChatStream',
+        query: query,
+        conversationContext: conversationContext
+      });
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      // For indexing requests (query === 'index them' with found_videos), 
+      // we don't want to display the response as a chat message or run analysis
+      // Just return the response so the button handler can process it
+      if ((query === 'index them' || query.toLowerCase().includes('index')) && conversationContext.found_videos) {
+        // Remove any streaming message that might have been created
+        const streamingMsg = document.getElementById(this.currentStreamingMessageId);
+        if (streamingMsg) {
+          streamingMsg.remove();
+        }
+        this.currentStreamingMessageId = null;
+        this.isStreaming = false;
+        return response;
+      }
+      
+      // Hide loader for non-indexing requests
+      this.hideLoadingMessage();
+      
+      // If streaming message exists, finalize it
+      const streamingMsg = document.getElementById(this.currentStreamingMessageId);
+      if (streamingMsg && this.isStreaming) {
+        // Get the raw text content
+        const textContainer = streamingMsg.querySelector('.streaming-text');
+        const rawText = textContainer ? textContainer.textContent : '';
+        
+        // Remove cursor
+        const cursor = streamingMsg.querySelector('.streaming-cursor');
+        if (cursor) {
+          cursor.remove();
+        }
+        
+        // Format the content with markdown
+        const messageContent = streamingMsg.querySelector('.message-content');
+        if (messageContent) {
+          // Clear existing content (removes streaming text and cursor)
+          messageContent.innerHTML = '';
+          
+          // If videos are found, only show cards (no text)
+          if (response.found_videos && response.found_videos.length > 0) {
+            const cardsContainer = this.createVideoCards(response.found_videos, true);
+            messageContent.appendChild(cardsContainer);
+            
+            // Add button after video cards
+            const questionBtn = this.createIndexVideoButton(response.found_videos);
+            messageContent.appendChild(questionBtn);
+          } else {
+            // Only show text if no videos found
+            if (rawText && rawText.trim()) {
+              const textDiv = document.createElement('div');
+              textDiv.innerHTML = this.formatMessageContent(rawText);
+              messageContent.appendChild(textDiv);
+            }
+          }
+        }
+        
+        streamingMsg.classList.remove('streaming');
+        streamingMsg.classList.add('assistant-message');
+      } else if (!streamingMsg && response) {
+        // No streaming occurred, show the response normally
+        const formattedResponse = typeof response === 'string' ? response : 
+                                 (response.result && typeof response.result === 'string' ? response.result : null) ||
+                                 (response.response && typeof response.response === 'string' ? response.response : null);
+        
+        // If videos are found, only show cards (no text)
+        if (response.found_videos && response.found_videos.length > 0) {
+          const messageDiv = document.createElement('div');
+          messageDiv.className = 'message assistant-message';
+          const messageContent = document.createElement('div');
+          messageContent.className = 'message-content';
+          
+          const cardsContainer = this.createVideoCards(response.found_videos, true);
+          messageContent.appendChild(cardsContainer);
+          
+          // Add button after video cards
+          const questionBtn = this.createIndexVideoButton(response.found_videos);
+          messageContent.appendChild(questionBtn);
+          
+          messageDiv.appendChild(messageContent);
+          this.chatMessages.appendChild(messageDiv);
+          this.scrollToBottom();
+        } else if (formattedResponse && formattedResponse !== 'null') {
+          // Only show text if no videos found
+          const messageDiv = document.createElement('div');
+          messageDiv.className = 'message assistant-message';
+          const messageContent = document.createElement('div');
+          messageContent.className = 'message-content';
+          
+          messageContent.innerHTML = this.formatMessageContent(formattedResponse);
+          
+          messageDiv.appendChild(messageContent);
+          this.chatMessages.appendChild(messageDiv);
+          this.scrollToBottom();
+        }
+      }
+      
+      this.currentStreamingMessageId = null;
+      this.isStreaming = false;
+      
+      // Return null to prevent sendMessage from processing again
+      return null;
+    } catch (error) {
+      // Hide loader before showing error
+      this.hideLoadingMessage();
+      
+      // Remove streaming message if exists
+      const streamingMsg = document.getElementById(this.currentStreamingMessageId);
+      if (streamingMsg) {
+        streamingMsg.remove();
+      }
+      
+      console.error('Agentic chat error:', error);
+      this.addMessage('assistant', `Sorry, I encountered an error: ${error.message}. Please try again.`);
+      this.currentStreamingMessageId = null;
+      this.isStreaming = false;
+      throw error;
+    }
+  }
+
   async processMessage(message) {
-    // Check if a video is selected from gallery
+    // Check if a video is selected from gallery or video cards
     if (this.selectedVideo && this.selectedVideo.id) {
+      // Verify video ID is present before making API call
+      console.log('Processing message with selected video ID:', this.selectedVideo.id, 'Query:', message);
+      
       // Use analyze API with selected video
       this.updateLoadingMessage('Analyzing selected video...');
       
@@ -1155,10 +1633,10 @@ class SidebarManager {
         this.currentStreamingMessageId = `streaming-${Date.now()}`;
         this.isStreaming = true;
         
-        // Call analyze API - streaming will be handled by existing message listener
+        // Call analyze API with the video ID - streaming will be handled by existing message listener
         const response = await chrome.runtime.sendMessage({
           action: 'analyzeVideo',
-          videoId: this.selectedVideo.id,
+          videoId: this.selectedVideo.id, // Ensure this is the TwelveLabs video ID
           type: 'open-ended',
           customPrompt: message
         });
@@ -1276,8 +1754,12 @@ class SidebarManager {
           
           // If videos are found, only show cards (no text)
           if (response.found_videos && response.found_videos.length > 0) {
-            const cardsContainer = this.createVideoCards(response.found_videos);
+            const cardsContainer = this.createVideoCards(response.found_videos, true);
             messageContent.appendChild(cardsContainer);
+            
+            // Add button after video cards
+            const questionBtn = this.createIndexVideoButton(response.found_videos);
+            messageContent.appendChild(questionBtn);
           } else {
             // Only show text if no videos found
             if (rawText && rawText.trim()) {
@@ -1303,8 +1785,12 @@ class SidebarManager {
           const messageContent = document.createElement('div');
           messageContent.className = 'message-content';
           
-          const cardsContainer = this.createVideoCards(response.found_videos);
+          const cardsContainer = this.createVideoCards(response.found_videos, true);
           messageContent.appendChild(cardsContainer);
+          
+          // Add button after video cards
+          const questionBtn = this.createIndexVideoButton(response.found_videos);
+          messageContent.appendChild(questionBtn);
           
           messageDiv.appendChild(messageContent);
           this.chatMessages.appendChild(messageDiv);
@@ -1827,6 +2313,7 @@ class SidebarManager {
     }
 
     this.chatMessages.appendChild(statusCard);
+    
     this.scrollToBottom();
   }
 
@@ -2404,9 +2891,23 @@ class SidebarManager {
     
     // Extract video title from name or use YouTube URL
     const videoTitle = this.extractVideoTitle(video);
-    const thumbnailUrl = video.thumbnail_url || '';
     const youtubeUrl = video.youtube_url || '';
     const duration = video.duration ? this.formatDuration(video.duration) : '';
+    
+    // Get thumbnail URL - prefer YouTube URL, fallback to thumbnail_url
+    let thumbnailUrl = '';
+    if (youtubeUrl) {
+      // Extract video ID from YouTube URL and generate thumbnail
+      const videoIdMatch = youtubeUrl.match(/[?&]v=([^&]+)/);
+      if (videoIdMatch) {
+        const videoId = videoIdMatch[1];
+        thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      }
+    }
+    // Fallback to thumbnail_url if YouTube URL not available or couldn't extract ID
+    if (!thumbnailUrl) {
+      thumbnailUrl = video.thumbnail_url || '';
+    }
 
     item.innerHTML = `
       <div class="video-list-item-thumbnail">
@@ -2478,12 +2979,28 @@ class SidebarManager {
     const thumbnailImg = this.container.querySelector('#selected-video-thumbnail-img');
     const titleEl = this.container.querySelector('#selected-video-title');
     const closeBtn = this.container.querySelector('#selected-video-close');
+    const goBtn = this.container.querySelector('#selected-video-go-btn');
     
     if (!selectedVideoDisplay) return;
     
     // Update content
     const videoTitle = this.extractVideoTitle(video);
-    const thumbnailUrl = video.thumbnail_url || '';
+    const youtubeUrl = video.youtube_url || video.url || '';
+    
+    // Get thumbnail URL - prefer YouTube URL, fallback to thumbnail_url
+    let thumbnailUrl = '';
+    if (youtubeUrl) {
+      // Extract video ID from YouTube URL and generate thumbnail
+      const videoIdMatch = youtubeUrl.match(/[?&]v=([^&]+)/);
+      if (videoIdMatch) {
+        const videoId = videoIdMatch[1];
+        thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      }
+    }
+    // Fallback to thumbnail_url if YouTube URL not available or couldn't extract ID
+    if (!thumbnailUrl) {
+      thumbnailUrl = video.thumbnail_url || '';
+    }
     
     if (thumbnailImg) {
       if (thumbnailUrl) {
@@ -2496,6 +3013,24 @@ class SidebarManager {
     
     if (titleEl) {
       titleEl.textContent = videoTitle;
+    }
+    
+    // Show/hide redirect button based on URL availability
+    if (goBtn) {
+      if (youtubeUrl) {
+        goBtn.style.display = 'flex';
+        // Add click handler for go button if not already added
+        if (!goBtn.dataset.handlerAdded) {
+          goBtn.dataset.handlerAdded = 'true';
+          goBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.location.href = youtubeUrl;
+          });
+        }
+      } else {
+        goBtn.style.display = 'none';
+      }
     }
     
     // Show the display
@@ -2513,9 +3048,12 @@ class SidebarManager {
   }
 
   unselectVideo() {
-    // Remove selected state from all items
+    // Remove selected state from all items (gallery and video cards)
     const allItems = this.container.querySelectorAll('.video-list-item');
     allItems.forEach(i => i.classList.remove('selected'));
+    
+    const allCards = this.container.querySelectorAll('.video-card');
+    allCards.forEach(c => c.classList.remove('selected'));
     
     // Clear selected video - this ensures processMessage will use agentic chat
     this.selectedVideo = null;
@@ -2537,6 +3075,11 @@ class SidebarManager {
   }
 
   extractVideoTitle(video) {
+    // First, try to get title if available
+    if (video.title && video.title.trim()) {
+      return video.title.trim();
+    }
+    
     // Try to get title from YouTube URL if available
     if (video.youtube_url) {
       // Extract video ID from URL
