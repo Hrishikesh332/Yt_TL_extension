@@ -2249,7 +2249,22 @@ class SidebarManager {
     let messageHTML = '';
     if (sender === 'user' && selectedVideo) {
       const videoTitle = this.extractVideoTitle(selectedVideo);
-      const thumbnailUrl = selectedVideo.thumbnail_url || '';
+      const youtubeUrl = selectedVideo.youtube_url || '';
+      
+      // Get thumbnail URL - prefer YouTube URL, fallback to thumbnail_url
+      let thumbnailUrl = '';
+      if (youtubeUrl) {
+        // Extract video ID from YouTube URL and generate thumbnail
+        const videoIdMatch = youtubeUrl.match(/[?&]v=([^&]+)/);
+        if (videoIdMatch) {
+          const videoId = videoIdMatch[1];
+          thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
+      }
+      // Fallback to thumbnail_url if YouTube URL not available or couldn't extract ID
+      if (!thumbnailUrl) {
+        thumbnailUrl = selectedVideo.thumbnail_url || '';
+      }
       
       messageHTML = `
         <div class="message-video-context">
